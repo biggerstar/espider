@@ -1,0 +1,24 @@
+{
+  "name": "espider",
+  "version": "0.0.2",
+  "dependencies": {
+    "@soyzr/table-to-excel": "^1.2.4",
+    "axios": "^0.26.1",
+    "cheerio": "^1.0.0-rc.10",
+    "debug": "^4.3.4",
+    "express": "^4.18.1",
+    "koa": "^2.13.4",
+    "koa-bodyparser": "^4.3.0",
+    "koa-router": "^10.1.1",
+    "log4js": "^6.4.2",
+    "mysql2": "^2.3.3",
+    "socket.io": "^4.4.1",
+    "tunnel": "^0.0.6",
+    "ws": "^8.5.0"
+  },
+  "devDependencies": {
+    "md5-node": "^1.0.1",
+    "node-xlsx": "^0.21.0",
+    "sequelize": "^6.19.0"
+  }
+}
