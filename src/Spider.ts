@@ -1,38 +1,58 @@
 import {SpiderManager} from "./SpiderManager";
-import {AxiosError, AxiosRequestConfig, AxiosInstance, AxiosResponse} from "axios";
+import {
+    AxiosSessionError,
+    AxiosSessionInstance,
+    AxiosSessionRequestConfig,
+    AxiosSessionResponse
+} from "@biggerstar/axios-session";
 
+export interface ESpiderMiddleware {
+    onRequest?<T extends AxiosSessionRequestConfig>(this: Spider, req: T): Promise<T | void>
 
-export abstract class Spider {
-    [key: string]: any
+    onResponse?<T extends AxiosSessionRequestConfig, R extends AxiosSessionResponse>(this: Spider, req: T, res: R): Promise<void | R>
+
+    onError?<T extends AxiosSessionError>(this: Spider, err: T): Promise<void | T>
+}
+
+export class Spider {
+    [key: `@${string}`]: () => ESpiderMiddleware
 
     public name?: string
     public _manager: SpiderManager
     public priority: number
-    public keepSession: boolean
-    public session: AxiosInstance
-    public middleware: Record<any, any>
+    public session: AxiosSessionInstance
+    public middleware: Record<string, ESpiderMiddleware>
 
     constructor() {
         const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
         this.middleware = {}
-        this.keepSession = false
         this.priority = 0
         Object.keys(descriptors)
             .filter(keyName => keyName.startsWith('@'))
             .forEach(name => this.middleware[name.slice(1)] = this[name]())
     }
 
-    public addRequest(req: AxiosRequestConfig | string) {
+    public addRequest<T extends AxiosSessionRequestConfig>(req: Partial<T> | string): void {
         this._manager.addRequest(this, req).then()
     }
 
-    public abstract request(req: AxiosRequestConfig): Promise<AxiosRequestConfig | void>
+    public addToDatabaseQueue(callback: Function) {
+        this._manager.addToDatabaseQueue(this, callback).then()
+    }
 
-    public abstract response(req: AxiosRequestConfig, res: AxiosResponse): Promise<void>
 
-    public abstract catch(err: AxiosError): Promise<void>
+    public onRequest?<T extends AxiosSessionRequestConfig>(req: T): Promise<T | void> | T {
+        return void 0
+    }
 
-    public abstract ready(): Promise<void>
+    public onResponse?<T extends AxiosSessionRequestConfig, R extends AxiosSessionResponse>(req: T, res: R): Promise<void | R> | T {
+        return void 0
+    }
 
+    public onError?<T extends AxiosSessionError>(err: T): Promise<void | T> | T {
+        return void 0
+    }
+
+    public onReady?(): Promise<void>
 }
 
