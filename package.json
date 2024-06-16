@@ -1,7 +1,15 @@
 {
   "name": "espider",
-  "version": "0.0.2",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite-run dev -y",
+    "build": "vite-run build -y",
+    "test": "tsx test/MaFenWpSpider.ts"
+  },
+  "type": "module",
   "dependencies": {
+    "@biggerstar/axios-session": "^0.1.6",
+    "@biggerstar/mitt-bus": "^0.0.10",
     "@soyzr/table-to-excel": "^1.2.4",
     "axios": "^0.26.1",
     "cheerio": "^1.0.0-rc.10",
@@ -12,13 +20,20 @@
     "koa-router": "^10.1.1",
     "log4js": "^6.4.2",
     "mysql2": "^2.3.3",
+    "p-queue": "^8.0.1",
     "socket.io": "^4.4.1",
+    "tsx": "^4.15.5",
     "tunnel": "^0.0.6",
     "ws": "^8.5.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.2",
     "md5-node": "^1.0.1",
     "node-xlsx": "^0.21.0",
-    "sequelize": "^6.19.0"
+    "sequelize": "^6.19.0",
+    "vite": "^5.3.1",
+    "vite-plugin-copy-dts": "^0.0.6",
+    "vite-plugin-dts": "^3.9.1",
+    "vite-run": "^1.7.1"
   }
 }
