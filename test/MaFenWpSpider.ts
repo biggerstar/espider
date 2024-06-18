@@ -1,42 +1,57 @@
-import {Spider, SpiderManager} from "../src";
-import {AxiosSessionError, AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
+import {ESpider} from "../src";
+import {
+    AxiosSessionError,
+    AxiosSessionInstance,
+    AxiosSessionRequestConfig,
+    AxiosSessionResponse
+} from "@biggerstar/axios-session";
+import {getProxyString} from "../src/utils/methods";
+import {SpiderMiddleware} from "../src/utils/SpiderMiddleware";
 
-export class MaFenWpSpider extends Spider {
+export class MaFenWpSpider extends ESpider {
+    public name = 'ma-feng-wo'
+
     async onReady() {
         console.log('ready')
-        spider.addRequest({
+        spider.addLocalTask({
             url: 'https://baidu.com?q=11',
-            maxRedirects: 0,
         })
     }
 
-    ['@baidu.com|weibo.com']() {
+    async onTask(task: any) {
+        console.log(task)
+
+    }
+
+    ['@baidu.com|weibo.com'](): SpiderMiddleware {
         return {
-            async onRequest(this: Spider, req: AxiosSessionRequestConfig) {
+            async onRequest(this: ESpider, req: AxiosSessionRequestConfig) {
                 console.log('accurate request', req);
             },
-            async onResponse(this: Spider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
+            async onResponse(this: ESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
                 console.log('accurate response', req, res.data.slice(0, 500));
                 this.addToDatabaseQueue(() => {
                     console.log('DatabaseQueue 回调')
                 })
             },
-            async onError(this: Spider, err: AxiosSessionError) {
+            async onError(this: ESpider, err: AxiosSessionError) {
                 console.log('accurate err', err.message)
-            }
+            },
         }
     }
-
 }
 
-const spiderManager = new SpiderManager()
+export class ProxyPoolSupport {
+    getProxyString() {
+
+    }
+}
+
+
 const spider = new MaFenWpSpider()
-spiderManager.addSpider(spider)
-await spiderManager.start()
-
-
-
-
+spider.setOptions({
+    requestConcurrency: 3
+}).start().then()
 
 
 
