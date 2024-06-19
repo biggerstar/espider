@@ -3,13 +3,14 @@ import * as fs from "node:fs";
 import md5 from 'md5'
 
 const {BloomFilter} = pkg;
-const filterFilePath = './spider.filter'
+const filterFilePath = './request.filter'
 const recordFilterContent = fs.existsSync(filterFilePath) ? fs.readFileSync(filterFilePath, 'utf8') : ''
 const printFlag = 2e4
 let filter
 if (recordFilterContent) {
     filter = BloomFilter.fromJSON(JSON.parse(recordFilterContent))
 } else {
+    console.log('--------------添加构成元素---------------')
     filter = new BloomFilter(1e8, 2)
     filter.add(md5('alice'))
     filter.add(md5('bob'))
@@ -24,11 +25,11 @@ if (recordFilterContent) {
         filter.add(md5('elem:' + i))
     }
 }
-console.log('----------------------------------')
+console.log('--------------进行命中测试---------------')
 let hitCont = 0
 let passCont = 0
 let startTime = Date.now()
-for (let i = 0; i < 3e6; i++) {
+for (let i = 0; i < 5e5; i++) {
     if (i % printFlag === 0 && i >= printFlag) {
         const endTime = Date.now()
         console.log('has: ', i, ' ', `${endTime - startTime}ms`)
@@ -43,7 +44,7 @@ for (let i = 0; i < 3e6; i++) {
 console.log('hitCont', hitCont, 'passCont', passCont)
 console.log(recordFilterContent ? '来自持久化文件' : '重新创建')
 console.log(filter.has(md5('elem:1222')));
-console.log(filter.has(md5('elem:12221111')));
+console.log(filter.has(md5('elem:haha')));
 console.log(filter.rate());
 if (!recordFilterContent) {
     const content = filter.saveAsJSON()
