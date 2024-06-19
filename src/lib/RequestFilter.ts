@@ -7,7 +7,6 @@ import {everyHasKeys} from "../utils/methods";
 import * as path from "path";
 
 export class RequestDupeFilter {
-  private filter: BloomFilter
   public supportRequestSize: number
   public dupeFilterCacheFilePath: string
   public requestFilterReset: boolean
@@ -15,9 +14,11 @@ export class RequestDupeFilter {
   public dupePersistenceInterval: number
   private _persistenceTimer: NodeJS.Timeout
   public _running: boolean
+  public enableDupeFilter: boolean
+  public filterRule: (req: Partial<AxiosSessionRequestConfig>) => string
+  private filter: BloomFilter
   private runtimeFilter: BloomFilter
   private runtimeFilterHash: string[]
-  public enableDupeFilter: boolean
 
   constructor() {
     this.dupeFilterCacheFilePath = './.cache/request.filter'
@@ -27,13 +28,21 @@ export class RequestDupeFilter {
     this.enableDupeFilter = true
     this.requestFilterReset = false
     this.runtimeFilterHash = []
+    this.filterRule = this._filterRule
   }
 
   /**
    * 进行配置
    * */
   public setOptions(opt: Partial<RequestFilterOptions> & Record<any, any> = {}) {
-    const whiteList = ['requestFilterReset', 'hashes', 'supportSize', 'filterCacheFilePath']
+    const whiteList = [
+      'requestFilterReset',
+      'hashes',
+      'supportSize',
+      'filterCacheFilePath',
+      'supportRequestSize',
+      'filterRule',
+      'enableDupeFilter']
     whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
   }
 
@@ -68,7 +77,7 @@ export class RequestDupeFilter {
   /**
    * 进行持久化，用于支持断点续爬
    * */
-  public _persistence() {
+  private _persistence() {
     this.runtimeFilterHash.forEach(hash => this.filter.add(hash))
     this.runtimeFilterHash = []
     const basePath = path.dirname(this.dupeFilterCacheFilePath)
@@ -80,7 +89,7 @@ export class RequestDupeFilter {
   /**
    * 将请求转换成 请求指纹
    * */
-  public get(req: Partial<AxiosSessionRequestConfig>) {
+  private _filterRule(req: Partial<AxiosSessionRequestConfig>) {
     let finallyReq: Partial<AxiosSessionRequestConfig> = typeof req === 'string' ? {url: req} : req
     const urls = new URL(finallyReq.url)
     urls.searchParams.sort()
@@ -111,14 +120,14 @@ export class RequestDupeFilter {
    * 判断过滤器是否存在该 请求对象指纹
    * */
   public has(req: Partial<AxiosSessionRequestConfig>): boolean {
-    return this.hasFP(this.get(req))
+    return this.hasFP(this.filterRule(req))
   }
 
   /**
    * 添加来自 请求对象的 指纹
    * */
   public add(req: Partial<AxiosSessionRequestConfig>): void {
-    this.addFP(this.get(req))
+    this.addFP(this.filterRule(req))
   }
 
   /**

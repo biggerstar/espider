@@ -133,7 +133,7 @@ export class ESpider implements SpiderMiddleware {
       console.log('请求指纹重复')
       return
     }
-    this.fingerprint.add(finallyReq)
+    // this.fingerprint.add(finallyReq)
     // this.dbQueue.add(() => {
     //   return this.requestQueueModel.create({
     //     name: this.name,

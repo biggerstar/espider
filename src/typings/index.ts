@@ -108,6 +108,9 @@ export type RequestFilterOptions = {
   dupePersistenceInterval: number
   /**
    * 是否开启请求指纹过滤去重
+   * @default true
    * */
   enableDupeFilter: number
+  /** 手动去重， 手动返回一个某个请求的唯一 hash */
+  filterRule: number
 }

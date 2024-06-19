@@ -25,21 +25,22 @@ export class MaFenWpSpider extends ESpider {
         'data-ccc': 'ccc1',
         'datA-aaa': 'aaa1',
         'datA-bbb': 'bbb1',
+        date: Date.now()
       }
     })
-    spider.addRequestTask({
-      url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
-      headers: {
-        'aaa': 'aaa2',
-        'ccc': 'ccc2',
-        'bbb': 'bbb2',
-      },
-      data: {
-        'datA-bbb': 'bbb1',
-        'datA-aaa': 'aaa1',
-        'data-ccc': 'ccc1',
-      }
-    })
+    // spider.addRequestTask({
+    //   url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
+    //   headers: {
+    //     'aaa': 'aaa2',
+    //     'ccc': 'ccc2',
+    //     'bbb': 'bbb2',
+    //   },
+    //   data: {
+    //     'datA-bbb': 'bbb1',
+    //     'datA-aaa': 'aaa1',
+    //     'data-ccc': 'ccc1',
+    //   }
+    // })
   }
 
   async onTask(task: any) {
