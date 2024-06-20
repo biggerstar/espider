@@ -1,6 +1,4 @@
 import {DataTypes, Sequelize} from 'sequelize'
-import {i} from "vite/dist/node/types.d-aGj9QkWt";
-
 
 export async function createRequestDBCache(sequelizeConnect: Sequelize, name: string) {
   if (!name) {

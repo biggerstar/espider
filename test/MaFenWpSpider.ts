@@ -1,14 +1,13 @@
-import {ESpider} from "../src";
+import {SessionESpider, ESpiderMiddleware} from "../src";
 import {
   AxiosSessionError,
   AxiosSessionInstance,
   AxiosSessionRequestConfig,
   AxiosSessionResponse
 } from "@biggerstar/axios-session";
-import {SpiderMiddleware} from "../src/typings/SpiderMiddleware";
-import {SpiderTask} from "../src/typings";
+import {SpiderTask} from "@/typings";
 
-export class MaFenWpSpider extends ESpider {
+export class MaFenWpSpider extends SessionESpider {
   public name = 'ma-feng-wo'
   proxy: any
 
@@ -28,6 +27,7 @@ export class MaFenWpSpider extends ESpider {
         date: Date.now()
       }
     })
+
     // spider.addRequestTask({
     //   url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
     //   headers: {
@@ -46,25 +46,27 @@ export class MaFenWpSpider extends ESpider {
   onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
   }
 
-  ['@baidu.com|weibo.com'](): SpiderMiddleware {
+  ['@baidu.com|weibo.com'](): ESpiderMiddleware {
     return {
-      async onRequest(this: ESpider, req: AxiosSessionRequestConfig) {
+      async onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
         console.log('accurate request', req);
       },
-      async onResponse(this: ESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
+      async onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
         console.log('accurate response', req, res.data.slice(0, 500));
         this.addToDatabaseQueue(() => {
           console.log('DatabaseQueue 回调')
         })
       },
-      async onError(this: ESpider, err: AxiosSessionError) {
+      async onError(this: SessionESpider, err: AxiosSessionError) {
         console.log('accurate err', err.message)
       },
     }
   }
+
   onClose(): Promise<void> | void {
     console.log('onClose')
   }
+
   onClosed(): Promise<void> | void {
     console.log('onClosed')
   }
@@ -82,13 +84,14 @@ spider
     requestConcurrency: 1
   })
   .start()
-  .then(()=>{
+  .then(() => {
     console.log('启动成功')
   })
 
 
 setTimeout(() => {
   console.log('爬虫关闭')
+  // console.log(spider.middleware);
   spider.close().then()
 }, 6000)
 

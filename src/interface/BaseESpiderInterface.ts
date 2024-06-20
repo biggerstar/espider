@@ -1,23 +1,27 @@
-import {SpiderMiddleware} from "../typings/SpiderMiddleware";
+import {BaseESpiderOptions} from "@/typings";
 import PQueue from "p-queue";
-import {BaseESpiderOptions, ESpiderEventNames} from "../typings";
+import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
+import {sleep} from "@/utils/methods";
 import {isNumber} from "lodash-es";
-import {RequestDupeFilter} from "./RequestFilter";
-import {sleep} from "../utils/methods";
+import {MiddlewareManager} from "@/middleware/MiddlewareManager";
+import {BaseSpiderMiddleware} from "@/middleware/SpiderMiddleware";
 
-
-export abstract class BaseESpider<Options extends BaseESpiderOptions> extends SpiderMiddleware {
-  [key: `@${string}`]: () => SpiderMiddleware
+export abstract class BaseESpiderInterface<
+  Options extends BaseESpiderOptions,
+  Middleware extends BaseSpiderMiddleware
+> extends BaseSpiderMiddleware {
+  
+  [key: `@${string}`]: () => Middleware
 
   public declare name: string
-  public readonly requestQueue: PQueue
-  public readonly dbQueue: PQueue
-  public readonly middleware: Record<string, SpiderMiddleware>
-  public readonly options: Options
-  public readonly fingerprint: RequestDupeFilter
+  public readonly options: Options & Record<any, any>
   protected abstract _running: boolean
   protected abstract _closed: boolean
   protected abstract _initialized: boolean
+  public readonly requestQueue: PQueue
+  public readonly dbQueue: PQueue
+  public readonly middlewareManager: MiddlewareManager<Middleware>
+  public readonly fingerprint: RequestDupeFilter
 
   protected constructor() {
     super();
@@ -26,38 +30,31 @@ export abstract class BaseESpider<Options extends BaseESpiderOptions> extends Sp
       interval: 0
     })
     this.dbQueue = new PQueue()
-    this.middleware = {}
+    this.middlewareManager = new MiddlewareManager()
     this.options = {} as any
+    Object.assign(this.options, <BaseESpiderOptions>{
+      name: '',
+      cacheDirPath: `./.cache`,
+      queueCheckInterval: 500,
+      dbQueueTimeout: 12000,
+      requestQueueTimeout: 12000,
+      dbQueueConcurrency: 1,
+      requestConcurrency: 1,
+      requestInterval: 0,
+    })
     this.fingerprint = new RequestDupeFilter()
-    const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
-    Object.keys(descriptors)
-      .filter(keyName => keyName.startsWith('@'))
-      .forEach(name => this.middleware[name.slice(1)] = this[name]())
     const oldAdd = this.requestQueue.add
     this.requestQueue.add = async function () {  // 重写add 函数进行支持请求间隔
       const res = oldAdd.apply(this, arguments)
       await sleep(_this.options.requestInterval)
       return res
     }
-  }
-
-  /**
-   * 回调的中间件和主蜘蛛实例事件
-   * */
-  async _callMiddleware(type: ESpiderEventNames, spider: BaseESpider<BaseESpiderOptions>, matchUrl: string | null, callback: (cb: Function) => Promise<any>) {
-    let middlewares = []
-    if (matchUrl) {
-      middlewares = Object.keys(spider.middleware)
-        .filter((name) => (new RegExp(name)).test(matchUrl))
-        .map(matchUrl => spider.middleware[matchUrl])
-        .filter(middleware => typeof middleware[type] === 'function')
-    }
-    if (typeof spider[type] === 'function') {  // 主蜘蛛回调
-      await callback(spider[type].bind(spider))
-    }
-    for (const middleware of middlewares) {  // 中间件回调, 支持回调的函数名比主蜘蛛少
-      await callback(middleware[type].bind(middleware))
-    }
+    /*---------------------提取主爬虫事件钩子------------------------*/
+    const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
+    Object.keys(descriptors)
+      .filter(keyName => keyName.startsWith('@'))
+      .forEach(name => this.middlewareManager.addMiddleware(name.slice(1), this[name]()))
+    this.middlewareManager.addRootMiddleware(<any>this)
   }
 
   public setOptions(opt: Partial<BaseESpiderOptions>) {
@@ -75,6 +72,7 @@ export abstract class BaseESpider<Options extends BaseESpiderOptions> extends Sp
     this.fingerprint.closeAutoPersistence()
     this.requestQueue.clear()
     this.dbQueue.clear()
+    await this.middlewareManager.callAll('onClose')
   }
 
   /**
@@ -84,6 +82,7 @@ export abstract class BaseESpider<Options extends BaseESpiderOptions> extends Sp
     this.fingerprint.closeAutoPersistence()
     this.requestQueue.pause()
     this.dbQueue.pause()
+    await this.middlewareManager.callAll('onPause')
   }
 
   /**
@@ -96,12 +95,14 @@ export abstract class BaseESpider<Options extends BaseESpiderOptions> extends Sp
     this.options.name = this.name
     this.setOptions(this.options)
     this.fingerprint.setOptions({
-      ...this.options,
+      name: this.options.name || this.name,
+      cacheDirPath: this.options.cacheDirPath,
       ...this.options.dupeFilterOptions,
     })
     this.fingerprint.start()
     this.requestQueue.start()
     this.dbQueue.start()
+    await this.middlewareManager.callAll('onStart')
   }
 
   /**

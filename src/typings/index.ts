@@ -1,8 +1,9 @@
 import {Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
 import {AxiosSessionInstance, AxiosSessionRequestConfig} from "@biggerstar/axios-session";
-import {ESpider} from "../ESpider";
-
+import {RequestStatusEnum} from "@/constant";
+import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
+import {BaseSpiderMiddleware} from "@/middleware/SpiderMiddleware";
 
 export type BaseESpiderOptions = {
   /**
@@ -51,9 +52,10 @@ export type SessionSpiderOptions = BaseESpiderOptions & {
   /**
    *  axiosSession 过期时间，单位毫秒, 超过这个时间将会被弃用,
    *  其中有一个用法就是可以设置成代理IP有效时间，过期将弃用
-   *  @default  5 * 60 * 1000
+   *  如果设置成 null 表示永不过期
+   *  @default  null
    *  */
-  expirationSessionTime: number
+  expirationSessionTime: number | null
 }
 
 export type ESpiderOptions = BaseESpiderOptions & SessionSpiderOptions & {
@@ -79,29 +81,31 @@ export type ESpiderOptions = BaseESpiderOptions & SessionSpiderOptions & {
    * */
   requestQueueModel: ModelStatic<Model>
 }
-export type ESpiderEventNames = SessionESpiderEventNames &
-  string
-  | 'onStart'
-  | 'onPause'
-  | 'onClose'
-  | 'onClosed'
-  | 'onRequest'
-  | 'onResponse'
-  | 'onError'
-  | 'onCompleted'
-  | 'onRequestTask'
+export type BaseSpiderEventNames = keyof BaseSpiderMiddleware
+export type SessionESpiderEventNames = BaseSpiderEventNames | 'onCreateSession'
 
-export type SessionESpiderEventNames = 'onCreateSession'
+export type BusEventData<EventNames extends BaseSpiderEventNames> = {
+  spider: BaseESpiderInterface<BaseESpiderOptions, BaseSpiderMiddleware>,
+  matchUrl?: string,
+}
 
 export type SessionItem = { pending: boolean, session: AxiosSessionInstance, lastUsageTime: number }
 export type SpiderTask<Task extends Record<any, any> | string> = {
   name: string,
-  status: 'ready' | 'pending' | 'done',
+  status: RequestStatusEnum,
   data: Task,
   timestamp: number
 }
 
 export type DupeFilterOptions = {
+  /**
+   * 爬虫名称
+   * */
+  name: string
+  /**
+   * 缓存目录
+   * */
+  cacheDirPath: string
   /**
    * 每次启动清空去重过滤缓存
    * @default false

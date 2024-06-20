@@ -1,10 +1,10 @@
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
-import pkg, {BloomFilter} from 'bloom-filters';
-import fs from "node:fs";
-import md5 from 'md5'
-import {everyHasKeys} from "../utils/methods";
+import pkg, {BloomFilter} from "bloom-filters";
+import {DupeFilterOptions} from "@/typings";
+import {everyHasKeys} from "@/utils/methods";
 import path from "node:path";
-import {DupeFilterOptions} from "../typings";
+import fs from "node:fs";
+import md5 from "md5";
 
 export class RequestDupeFilter {
   public supportRequestSize: number
@@ -45,7 +45,8 @@ export class RequestDupeFilter {
       'supportRequestSize',
       'filterRule',
       'cacheDirPath',
-      'enableDupeFilter']
+      'enableDupeFilter'
+    ]
     whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
   }
 

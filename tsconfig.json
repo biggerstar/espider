@@ -26,6 +26,9 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "paths": {
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "compileOnSave": false,

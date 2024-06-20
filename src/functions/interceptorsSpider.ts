@@ -1,14 +1,13 @@
 import {AxiosSessionInstance, AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
 import {AxiosError} from "axios";
-import {BaseESpider} from "../interface/BaseESpider";
-import {BaseESpiderOptions} from "../typings";
+import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
 
 /**
  * 拦截请求, 响应， 请求和响应错误
  * */
-export function interceptorsSpider(spider: BaseESpider<BaseESpiderOptions>, session: AxiosSessionInstance) {
+export function interceptorsSpider(spider: SessionESpiderInterface, session: AxiosSessionInstance) {
   async function request(req: AxiosSessionRequestConfig): Promise<any> {
-    await spider._callMiddleware('onRequest', spider, req.url, async (cb) => {
+    await spider.middlewareManager.callAll('onRequest', req.url, async (cb) => {
       const r = await cb.call(spider, req)
       if (typeof r === 'object') req = r
     })
@@ -17,13 +16,13 @@ export function interceptorsSpider(spider: BaseESpider<BaseESpiderOptions>, sess
 
   async function response(res: AxiosSessionResponse) {
     const reqUrl = res.request?.['res']?.['responseUrl'] || res.config?.url
-    await spider._callMiddleware('onResponse', spider, reqUrl, async (cb) => cb.call(spider, res.request, res))
+    await spider.middlewareManager.callAll('onResponse', reqUrl, async (cb) => cb.call(spider, res.request, res))
     return res
   }
 
   async function catchErr(err: AxiosError) {
     const reqUrl = err.request?.['res']?.['responseUrl'] || err.config?.url
-    await spider._callMiddleware('onError', spider, reqUrl, async (cb) => cb.call(spider, err))
+    await spider.middlewareManager.callAll('onError', reqUrl, async (cb) => cb.call(spider, err))
     return err
   }
 
