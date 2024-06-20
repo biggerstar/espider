@@ -5,14 +5,14 @@ import {
   AxiosSessionRequestConfig,
   AxiosSessionResponse
 } from "@biggerstar/axios-session";
-import {getProxyString} from "../src/utils/methods";
 import {SpiderMiddleware} from "../src/typings/SpiderMiddleware";
+import {SpiderTask} from "../src/typings";
 
 export class MaFenWpSpider extends ESpider {
   public name = 'ma-feng-wo'
   proxy: any
 
-  async onReady() {
+  async onStart() {
     console.log('ready')
     spider.addRequestTask({
       url: 'https://baidu.com/aaaa?q=11&b=222#accccc',
@@ -43,9 +43,7 @@ export class MaFenWpSpider extends ESpider {
     // })
   }
 
-  async onTask(task: any) {
-    console.log(task)
-
+  onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
   }
 
   ['@baidu.com|weibo.com'](): SpiderMiddleware {
@@ -64,6 +62,12 @@ export class MaFenWpSpider extends ESpider {
       },
     }
   }
+  onClose(): Promise<void> | void {
+    console.log('onClose')
+  }
+  onClosed(): Promise<void> | void {
+    console.log('onClosed')
+  }
 }
 
 export class ProxyPoolSupport {
@@ -72,14 +76,19 @@ export class ProxyPoolSupport {
   }
 }
 
-
 const spider = new MaFenWpSpider()
 spider
   .setOptions({
     requestConcurrency: 1
   })
   .start()
+  .then(()=>{
+    console.log('启动成功')
+  })
 
 
-
+setTimeout(() => {
+  console.log('爬虫关闭')
+  spider.close().then()
+}, 6000)
 

@@ -27,10 +27,10 @@ export function getRandomItemForArray(array: any[]) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-export function sleep(time: number) {
-  return new Promise(resolve => setTimeout(resolve, time || 0))
+export function sleep(time: number = 0) {
+  return new Promise(resolve => setTimeout(resolve, time))
 }
 
-export function everyHasKeys(obj1: Record<any, any>, obj2: Record<any, any>, keys: string[]) {
+export function everyHasKeys<T extends Record<any, any>>(obj1: Record<any, any>, obj2: Record<any, any>, keys: Array<keyof T>) {
   return keys.every(key => Object.hasOwn(obj1, key) && Object.hasOwn(obj2, key))
 }

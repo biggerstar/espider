@@ -1,10 +1,10 @@
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
 import pkg, {BloomFilter} from 'bloom-filters';
-import * as fs from "node:fs";
+import fs from "node:fs";
 import md5 from 'md5'
-import {RequestFilterOptions} from "../typings";
 import {everyHasKeys} from "../utils/methods";
-import * as path from "path";
+import path from "node:path";
+import {DupeFilterOptions} from "../typings";
 
 export class RequestDupeFilter {
   public supportRequestSize: number
@@ -19,9 +19,10 @@ export class RequestDupeFilter {
   private filter: BloomFilter
   private runtimeFilter: BloomFilter
   private runtimeFilterHash: string[]
+  public cacheDirPath: string
+  public name: string
 
   constructor() {
-    this.dupeFilterCacheFilePath = './.cache/request.filter'
     this.supportRequestSize = 1e8   // 一亿
     this.hashes = 2
     this.dupePersistenceInterval = 5 * 1000
@@ -34,14 +35,16 @@ export class RequestDupeFilter {
   /**
    * 进行配置
    * */
-  public setOptions(opt: Partial<RequestFilterOptions> & Record<any, any> = {}) {
+  public setOptions(opt: Partial<DupeFilterOptions> & Record<any, any> = {}) {
     const whiteList = [
+      'name',
       'requestFilterReset',
       'hashes',
       'supportSize',
       'filterCacheFilePath',
       'supportRequestSize',
       'filterRule',
+      'cacheDirPath',
       'enableDupeFilter']
     whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
   }
@@ -50,8 +53,12 @@ export class RequestDupeFilter {
    * 启动
    * */
   public start() {
+    if (!this.name) {
+      throw new Error('请指定爬虫名称 name')
+    }
     if (!this.enableDupeFilter) return;
     if (this._running) return
+    this.dupeFilterCacheFilePath = path.resolve(this.cacheDirPath, `${this.name}.request.filter`)
     this._persistenceTimer = setInterval(() => {
       clearInterval(this._persistenceTimer)
       this._persistence()

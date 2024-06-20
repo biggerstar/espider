@@ -1,8 +1,14 @@
 import {Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
-import {AxiosSessionInstance} from "@biggerstar/axios-session";
+import {AxiosSessionInstance, AxiosSessionRequestConfig} from "@biggerstar/axios-session";
+import {ESpider} from "../ESpider";
 
-export type ESpiderOptions = {
+
+export type BaseESpiderOptions = {
+  /**
+   * 爬虫名称
+   * */
+  name: string
   /** 数据库队列超时时间,单位毫秒
    * @default 12000
    * */
@@ -33,11 +39,24 @@ export type ESpiderOptions = {
    * */
   requestInterval: number
   /**
+   * 请求去重选项配置
+   * */
+  dupeFilterOptions: DupeFilterOptions
+  /**
+   * 缓存目录
+   * */
+  cacheDirPath: string
+}
+export type SessionSpiderOptions = BaseESpiderOptions & {
+  /**
    *  axiosSession 过期时间，单位毫秒, 超过这个时间将会被弃用,
    *  其中有一个用法就是可以设置成代理IP有效时间，过期将弃用
    *  @default  5 * 60 * 1000
    *  */
   expirationSessionTime: number
+}
+
+export type ESpiderOptions = BaseESpiderOptions & SessionSpiderOptions & {
   /**
    * 当前使用的 sequelize 任务队列连接实例，可以自定义远程数据库
    * 您可以使用 mysql 或者其他数据库
@@ -59,12 +78,21 @@ export type ESpiderOptions = {
    * 请求队列的 sequelize 实例
    * */
   requestQueueModel: ModelStatic<Model>
-  /**
-   * 请求去重选项配置
-   * */
-  requestFilterOptions: RequestFilterOptions
 }
-export type EventNames = 'onRequest' | 'onResponse' | 'onError' | 'onCompleted' | 'onCreateSession' | 'onRequestTask'
+export type ESpiderEventNames = SessionESpiderEventNames &
+  string
+  | 'onStart'
+  | 'onPause'
+  | 'onClose'
+  | 'onClosed'
+  | 'onRequest'
+  | 'onResponse'
+  | 'onError'
+  | 'onCompleted'
+  | 'onRequestTask'
+
+export type SessionESpiderEventNames = 'onCreateSession'
+
 export type SessionItem = { pending: boolean, session: AxiosSessionInstance, lastUsageTime: number }
 export type SpiderTask<Task extends Record<any, any> | string> = {
   name: string,
@@ -73,7 +101,7 @@ export type SpiderTask<Task extends Record<any, any> | string> = {
   timestamp: number
 }
 
-export type RequestFilterOptions = {
+export type DupeFilterOptions = {
   /**
    * 每次启动清空去重过滤缓存
    * @default false
@@ -112,5 +140,6 @@ export type RequestFilterOptions = {
    * */
   enableDupeFilter: number
   /** 手动去重， 手动返回一个某个请求的唯一 hash */
-  filterRule: number
+  filterRule(req: AxiosSessionRequestConfig): string
 }
+

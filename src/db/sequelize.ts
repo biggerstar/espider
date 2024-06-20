@@ -7,17 +7,13 @@ export async function createRequestDBCache(sequelizeConnect: Sequelize, name: st
     throw new Error('请传入要创建的数据库队列名称')
   }
   const RequestCache = sequelizeConnect.define(`${name}-task-queue`, {
-    'spider-task-id': {    // ID
+    'task-id': {    // ID
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    name: {  // 爬虫名字
-      type: DataTypes.STRING,
-      allowNull: false
-    },
     status: {  // 状态
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     data: {  // axios 请求字符串
