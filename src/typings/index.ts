@@ -3,9 +3,9 @@ import {Model, ModelStatic} from "sequelize/types/model";
 import {AxiosSessionInstance, AxiosSessionRequestConfig} from "@biggerstar/axios-session";
 import {RequestStatusEnum} from "@/constant";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
-import {BaseSpiderMiddleware} from "@/middleware/SpiderMiddleware";
+import {BaseESpiderInterfaceMiddleware} from "@/middleware";
 
-export type BaseESpiderOptions = {
+export type BaseESpiderInterfaceOptions = {
   /**
    * 爬虫名称
    * */
@@ -48,7 +48,7 @@ export type BaseESpiderOptions = {
    * */
   cacheDirPath: string
 }
-export type SessionSpiderOptions = BaseESpiderOptions & {
+export type SessionESpiderInterfaceOptions = BaseESpiderInterfaceOptions & {
   /**
    *  axiosSession 过期时间，单位毫秒, 超过这个时间将会被弃用,
    *  其中有一个用法就是可以设置成代理IP有效时间，过期将弃用
@@ -58,7 +58,7 @@ export type SessionSpiderOptions = BaseESpiderOptions & {
   expirationSessionTime: number | null
 }
 
-export type ESpiderOptions = BaseESpiderOptions & SessionSpiderOptions & {
+export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpiderInterfaceOptions & {
   /**
    * 当前使用的 sequelize 任务队列连接实例，可以自定义远程数据库
    * 您可以使用 mysql 或者其他数据库
@@ -81,11 +81,11 @@ export type ESpiderOptions = BaseESpiderOptions & SessionSpiderOptions & {
    * */
   requestQueueModel: ModelStatic<Model>
 }
-export type BaseSpiderEventNames = keyof BaseSpiderMiddleware
+export type BaseSpiderEventNames = keyof BaseESpiderInterfaceMiddleware
 export type SessionESpiderEventNames = BaseSpiderEventNames | 'onCreateSession'
 
 export type BusEventData<EventNames extends BaseSpiderEventNames> = {
-  spider: BaseESpiderInterface<BaseESpiderOptions, BaseSpiderMiddleware>,
+  spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, BaseESpiderInterfaceMiddleware>,
   matchUrl?: string,
 }
 

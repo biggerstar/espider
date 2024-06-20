@@ -1,4 +1,3 @@
-import {SessionESpider, ESpiderMiddleware} from "../src";
 import {
   AxiosSessionError,
   AxiosSessionInstance,
@@ -6,13 +5,14 @@ import {
   AxiosSessionResponse
 } from "@biggerstar/axios-session";
 import {SpiderTask} from "@/typings";
+import {SessionESpider} from "@/spider";
+import {SessionESpiderMiddleware} from "@/middleware";
 
-export class MaFenWpSpider extends SessionESpider {
-  public name = 'ma-feng-wo'
-  proxy: any
+export class Test extends SessionESpider {
+  public name = 'test'
 
   async onStart() {
-    console.log('ready')
+    console.log('onStart')
     spider.addRequestTask({
       url: 'https://baidu.com/aaaa?q=11&b=222#accccc',
       headers: {
@@ -43,10 +43,7 @@ export class MaFenWpSpider extends SessionESpider {
     // })
   }
 
-  onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
-  }
-
-  ['@baidu.com|weibo.com'](): ESpiderMiddleware {
+  ['@baidu.com|weibo.com'](): SessionESpiderMiddleware {
     return {
       async onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
         console.log('accurate request', req);
@@ -67,8 +64,20 @@ export class MaFenWpSpider extends SessionESpider {
     console.log('onClose')
   }
 
+  onPause(): Promise<void> | void {
+    console.log('onPause')
+  }
+
   onClosed(): Promise<void> | void {
     console.log('onClosed')
+  }
+
+  onError<T extends AxiosSessionError>(err: T, session: AxiosSessionInstance): Promise<void | T> | void | T {
+    console.log('onError')
+  }
+
+  onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
+    console.log('onRequestTask')
   }
 }
 
@@ -78,7 +87,7 @@ export class ProxyPoolSupport {
   }
 }
 
-const spider = new MaFenWpSpider()
+const spider = new Test()
 spider
   .setOptions({
     requestConcurrency: 1

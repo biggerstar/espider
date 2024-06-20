@@ -1,14 +1,15 @@
 import {AxiosSessionInstance, AxiosSessionRequestConfig, createAxiosSession} from "@biggerstar/axios-session";
 import {interceptorsSpider} from "@/functions/interceptorsSpider";
 import {getRandomItemForArray} from "@/utils/methods";
-import {SessionItem, SessionSpiderOptions} from "@/typings";
+import {SessionESpiderInterfaceOptions, SessionItem} from "@/typings";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
-import {SessionMiddleware} from "@/middleware/SpiderMiddleware";
+import {SessionESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
 
 export abstract class SessionESpiderInterface<
-  Options extends SessionSpiderOptions = SessionSpiderOptions,
-  Middleware extends SessionMiddleware = SessionMiddleware
-> extends BaseESpiderInterface<Options, Middleware> {
+  Options extends SessionESpiderInterfaceOptions = SessionESpiderInterfaceOptions,
+  Middleware extends SessionESpiderInterfaceMiddleware = SessionESpiderInterfaceMiddleware
+> extends BaseESpiderInterface<Options, Middleware> 
+  implements SessionESpiderInterfaceMiddleware {
 
   protected sessionList: Array<SessionItem> = []
   private _listeningTimer: NodeJS.Timeout   // 轮询队列的时间周期
@@ -16,7 +17,7 @@ export abstract class SessionESpiderInterface<
 
   protected constructor() {
     super();
-    Object.assign(this.options, <SessionSpiderOptions>{
+    Object.assign(this.options, <SessionESpiderInterfaceOptions>{
       expirationSessionTime: null
     })
   }

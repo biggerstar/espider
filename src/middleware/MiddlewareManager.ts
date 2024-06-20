@@ -1,9 +1,9 @@
-import {BaseESpiderOptions} from "@/typings";
 import {isFunction} from "lodash-es";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
+import {BaseESpiderInterfaceOptions} from "@/typings";
 
 export class MiddlewareManager<Middleware extends unknown> {
-  public spider: BaseESpiderInterface<BaseESpiderOptions, Middleware>
+  public spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, Middleware>
   public middleware: Record<string, Middleware> = {}
   public rootMiddleware: Middleware
 

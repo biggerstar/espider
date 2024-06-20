@@ -1,15 +1,16 @@
-import {BaseESpiderOptions} from "@/typings";
+import {BaseESpiderInterfaceOptions} from "@/typings";
 import PQueue from "p-queue";
 import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
 import {sleep} from "@/utils/methods";
 import {isNumber} from "lodash-es";
 import {MiddlewareManager} from "@/middleware/MiddlewareManager";
-import {BaseSpiderMiddleware} from "@/middleware/SpiderMiddleware";
+import {BaseESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
 
 export abstract class BaseESpiderInterface<
-  Options extends BaseESpiderOptions,
-  Middleware extends BaseSpiderMiddleware
-> extends BaseSpiderMiddleware {
+  Options extends BaseESpiderInterfaceOptions,
+  Middleware extends BaseESpiderInterfaceMiddleware
+> extends BaseESpiderInterfaceMiddleware 
+  implements BaseESpiderInterfaceMiddleware{
   
   [key: `@${string}`]: () => Middleware
 
@@ -32,7 +33,7 @@ export abstract class BaseESpiderInterface<
     this.dbQueue = new PQueue()
     this.middlewareManager = new MiddlewareManager()
     this.options = {} as any
-    Object.assign(this.options, <BaseESpiderOptions>{
+    Object.assign(this.options, <BaseESpiderInterfaceOptions>{
       name: '',
       cacheDirPath: `./.cache`,
       queueCheckInterval: 500,
@@ -57,7 +58,7 @@ export abstract class BaseESpiderInterface<
     this.middlewareManager.addRootMiddleware(<any>this)
   }
 
-  public setOptions(opt: Partial<BaseESpiderOptions>) {
+  public setOptions(opt: Partial<BaseESpiderInterfaceOptions>) {
     Object.assign(this.options, opt)
     if (isNumber(opt.dbQueueConcurrency)) this.dbQueue.concurrency = opt.dbQueueConcurrency
     if (isNumber(opt.requestConcurrency)) this.requestQueue.concurrency = opt.requestConcurrency

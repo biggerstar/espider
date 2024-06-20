@@ -1,15 +1,18 @@
 import {Op, Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
-import {ESpiderOptions} from "@/typings";
+import {SessionESpiderOptions} from "@/typings";
 import {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
 import {RequestStatusEnum} from "@/constant";
 import path from "node:path";
 import {createRequestDBCache} from "@/db/sequelize";
 import {everyHasKeys} from "@/utils/methods";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
-import {ESpiderMiddleware} from "@/middleware/SpiderMiddleware";
+import {SessionESpiderMiddleware} from "@/middleware/SpiderMiddleware";
 
-export class SessionESpider extends SessionESpiderInterface<ESpiderOptions, ESpiderMiddleware> {
+export class SessionESpider
+  extends SessionESpiderInterface<SessionESpiderOptions, SessionESpiderMiddleware>
+  implements SessionESpiderMiddleware {
+  
   protected _running: boolean;
   protected _closed: boolean;
   protected _initialized: boolean;
@@ -26,7 +29,7 @@ export class SessionESpider extends SessionESpiderInterface<ESpiderOptions, ESpi
   /**
    * 配置爬虫
    * */
-  public setOptions(opt: Partial<ESpiderOptions> = {}): this {
+  public setOptions(opt: Partial<SessionESpiderOptions> = {}): this {
     super.setOptions(opt)
     const whiteList = ['requestQueueModel', 'sequelize']
     whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
