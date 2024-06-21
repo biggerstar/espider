@@ -81,6 +81,9 @@ export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpider
    * */
   requestQueueModel: ModelStatic<Model>
 }
+
+export type AddRequestTaskAllowField =  'meta' | 'method' | 'url' | 'data' | 'headers'
+export type AddRequestTaskOptions = Pick<AxiosSessionRequestConfig, AddRequestTaskAllowField>
 export type BaseSpiderEventNames = keyof BaseESpiderInterfaceMiddleware
 export type SessionESpiderEventNames = BaseSpiderEventNames | 'onCreateSession'
 
@@ -89,12 +92,19 @@ export type BusEventData<EventNames extends BaseSpiderEventNames> = {
   matchUrl?: string,
 }
 
-export type SessionItem = { pending: boolean, session: AxiosSessionInstance, lastUsageTime: number }
+export type SessionItem = { pending: boolean, session: AxiosSessionInstance, createTime: number }
 export type SpiderTask<Task extends Record<any, any> | string> = {
-  name: string,
   status: RequestStatusEnum,
   data: Task,
+  meta: Record<any, any>
   timestamp: number
+}
+
+export type AddRequestTaskOtherOptions = {
+  /**
+   * 任务优先级
+   * */
+  priority: number
 }
 
 export type DupeFilterOptions = {
@@ -113,14 +123,14 @@ export type DupeFilterOptions = {
   requestFilterReset: boolean
 
   /**
-   * 布尔基础过滤器 ( bloom-filters ) 的哈希函数的个数
+   * 布隆基础过滤器 ( bloom-filters ) 的哈希函数的个数
    * @default 2
    * */
   hashes: boolean
 
   /**
    * 设置支持的去重请求数量，需要根据开发者做的实际的业务进行设置
-   * 默认支持 一亿请求过滤， 可以调高， 但是占用的缓存也会增加，目前增加 1亿请求将多占用缓存 16.7m 磁盘内存
+   * 默认支持 一亿请求过滤， 可以调高， 但是占用的缓存也会增加，目前缓存占用参考 1亿请求将多占用缓存 16.7m 磁盘内存
    * @default 1e8
    * */
   supportRequestSize: boolean
@@ -128,7 +138,7 @@ export type DupeFilterOptions = {
   /**
    * 去重缓存文件的存放路径
    * 默认放启动路径， 如果是包运行则在包根路径
-   * @default './.cache/request.filter'
+   * @default './.cache/{spider-name}.request.filter'
    * */
   dupeFilterCacheFilePath: string
 
@@ -143,7 +153,7 @@ export type DupeFilterOptions = {
    * @default true
    * */
   enableDupeFilter: number
-  /** 手动去重， 手动返回一个某个请求的唯一 hash */
+  /** 手动定义去重规则， 返回一个能表示某个请求的唯一 hash */
   filterRule(req: AxiosSessionRequestConfig): string
 }
 

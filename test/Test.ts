@@ -6,27 +6,34 @@ import {
 } from "@biggerstar/axios-session";
 import {SpiderTask} from "@/typings";
 import {SessionESpider} from "@/spider";
-import {SessionESpiderMiddleware} from "@/middleware";
+import {ESpiderUrlMatchMiddleware} from "@/middleware";
 
 export class Test extends SessionESpider {
   public name = 'test'
 
-  async onStart() {
+  onStart() {
     console.log('onStart')
     spider.addRequestTask({
-      url: 'https://baidu.com/aaaa?q=11&b=222#accccc',
-      headers: {
-        'ccc': 'ccc1',
-        'bbb': 'bbb1',
-        'aaa': 'aaa1',
+        url: 'https://baidu.com?q=11&b=222#accccc',
+        method: 'POST',
+        headers: {
+          'ccc': 'ccc1',
+          'bbb': 'bbb1',
+          'aaa': 'aaa1',
+        },
+        data: {
+          'data-ccc': 'ccc1',
+          'datA-aaa': 'aaa1',
+          'datA-bbb': 'bbb1',
+        },
+        meta: {
+          aaa: 11122222
+        },
+        maxRedirects: 1,
       },
-      data: {
-        'data-ccc': 'ccc1',
-        'datA-aaa': 'aaa1',
-        'datA-bbb': 'bbb1',
-        date: Date.now()
-      }
-    })
+      {
+        priority: 2
+      })
 
     // spider.addRequestTask({
     //   url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
@@ -43,49 +50,47 @@ export class Test extends SessionESpider {
     // })
   }
 
-  ['@baidu.com|weibo.com'](): SessionESpiderMiddleware {
-    return {
-      async onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
-        console.log('accurate request', req);
-      },
-      async onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
-        console.log('accurate response', req, res.data.slice(0, 500));
-        this.addToDatabaseQueue(() => {
-          console.log('DatabaseQueue 回调')
-        })
-      },
-      async onError(this: SessionESpider, err: AxiosSessionError) {
-        console.log('accurate err', err.message)
-      },
-    }
+  onPause(): Promise<void> | void {
+    console.log('onPause')
   }
 
   onClose(): Promise<void> | void {
     console.log('onClose')
   }
 
-  onPause(): Promise<void> | void {
-    console.log('onPause')
-  }
-
   onClosed(): Promise<void> | void {
     console.log('onClosed')
   }
 
-  onError<T extends AxiosSessionError>(err: T, session: AxiosSessionInstance): Promise<void | T> | void | T {
-    console.log('onError')
+  onCreateSession(session: AxiosSessionInstance): Promise<void> | void {
+    // console.log('onCreateSession', session)
+    session.setAxiosDefaults({
+      // proxyString: ``,
+      keepSession: true,
+    })
   }
 
-  onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
-    console.log('onRequestTask')
+  ['@baidu.com|weibo.com'](): ESpiderUrlMatchMiddleware {
+    return {
+      onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
+        console.log('onRequestTask')
+      },
+      onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
+        // console.log('accurate request', req);
+      },
+      onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
+        // console.log('accurate response', req, res.data.slice(0, 500));
+        this.addToDatabaseQueue(() => {
+          console.log('DatabaseQueue 回调')
+        })
+      },
+      onError(this: SessionESpider, err: AxiosSessionError) {
+        console.log('accurate err', err.message)
+      },
+    }
   }
 }
 
-export class ProxyPoolSupport {
-  getProxyString() {
-
-  }
-}
 
 const spider = new Test()
 spider
@@ -96,11 +101,4 @@ spider
   .then(() => {
     console.log('启动成功')
   })
-
-
-setTimeout(() => {
-  console.log('爬虫关闭')
-  // console.log(spider.middleware);
-  spider.close().then()
-}, 6000)
-
+// const reqUrl = response?.request?.['res']?.['responseUrl'] || response?.config?.url

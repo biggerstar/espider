@@ -2,22 +2,45 @@ import {isFunction} from "lodash-es";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
 import {BaseESpiderInterfaceOptions} from "@/typings";
 
-export class MiddlewareManager<Middleware extends unknown> {
-  public spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, Middleware>
-  public middleware: Record<string, Middleware> = {}
-  public rootMiddleware: Middleware
+const rootMiddlewareEvent = [
+  'onStart',
+  'onPause',
+  'onClose',
+  'onClosed',
+  'onCreateSession',
+]
+
+const urlMatchMiddlewareEvent = [
+  'onRequestTask',
+  'onRequest',
+  'onResponse',
+  'onError',
+]
+
+export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddleware extends unknown> {
+  public spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, RootMiddleware>
+  public middleware: Record<string, UrlMatchMiddleware> = {}
+  public rootRootMiddleware: RootMiddleware
+  public rootMiddlewareEvent: Array<keyof RootMiddleware | string>
+  public urlMatchMiddlewareEvent: Array<keyof UrlMatchMiddleware | string>
+
+  constructor(spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, RootMiddleware>) {
+    this.spider = spider
+    this.rootMiddlewareEvent = rootMiddlewareEvent
+    this.urlMatchMiddlewareEvent = urlMatchMiddlewareEvent
+  }
 
   /**
    * 添加主蜘蛛钩子
    * */
-  public addRootMiddleware(rootMiddleware: Middleware) {
-    this.rootMiddleware = rootMiddleware
+  public addRootMiddleware(rootRootMiddleware: RootMiddleware) {
+    this.rootRootMiddleware = rootRootMiddleware
   }
 
   /**
    * 添加中间件
    * */
-  public addMiddleware(name: string, middleware: Middleware) {
+  public addMiddleware(name: string, middleware: UrlMatchMiddleware) {
     this.middleware[name] = middleware
   }
 
@@ -25,11 +48,12 @@ export class MiddlewareManager<Middleware extends unknown> {
    * 回调中间件事件
    * */
   public async call(
-    type: keyof Middleware,
+    type: keyof UrlMatchMiddleware,
     matchUrl: string | null = null,
     callback?: (cb: Function) => Promise<any>
   ) {
-    let middlewares: Middleware[] = []
+    if (!this.urlMatchMiddlewareEvent.includes(type)) return
+    let middlewares: UrlMatchMiddleware[] = []
     if (matchUrl) {
       middlewares = Object.keys(this.middleware)
         .filter((name) => (new RegExp(name)).test(matchUrl))
@@ -47,20 +71,17 @@ export class MiddlewareManager<Middleware extends unknown> {
   /**
    * 回调主蜘蛛实例事件
    * */
-  public async callRoot(type: keyof Middleware, callback?: (cb: Function) => Promise<any>) {
-    const cb = this.rootMiddleware[type]
+  public async callRoot(type: keyof RootMiddleware, callback?: (cb: Function) => Promise<any>) {
+    if (!this.rootMiddlewareEvent.includes(type)) return
+    const cb = this.rootRootMiddleware[type]
     if (!isFunction(cb)) return
     if (callback) await callback(cb.bind(this.spider))
     else await cb.call(this.spider)
   }
-
-  /**
-   * 回调中间件和主蜘蛛实例事件
-   * 传入 callback 将会回调该函数进行手动调用
-   * 如果没有传入 callback 则会自动调用
-   * */
-  public async callAll(type: keyof Middleware, matchUrl: string | null = null, callback?: (cb: Function) => Promise<any>) {
-    await this.callRoot(type, callback)
-    await this.call(type, matchUrl, callback)
-  }
 }
+
+
+
+
+
+

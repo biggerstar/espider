@@ -7,7 +7,7 @@ import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
  * */
 export function interceptorsSpider(spider: SessionESpiderInterface, session: AxiosSessionInstance) {
   async function request(req: AxiosSessionRequestConfig): Promise<any> {
-    await spider.middlewareManager.callAll('onRequest', req.url, async (cb) => {
+    await spider.middlewareManager.call('onRequest', req.url, async (cb) => {
       const r = await cb.call(spider, req)
       if (typeof r === 'object') req = r
     })
@@ -16,13 +16,13 @@ export function interceptorsSpider(spider: SessionESpiderInterface, session: Axi
 
   async function response(res: AxiosSessionResponse) {
     const reqUrl = res.request?.['res']?.['responseUrl'] || res.config?.url
-    await spider.middlewareManager.callAll('onResponse', reqUrl, async (cb) => cb.call(spider, res.request, res))
+    await spider.middlewareManager.call('onResponse', reqUrl, async (cb) => cb.call(spider, res.request, res))
     return res
   }
 
   async function catchErr(err: AxiosError) {
     const reqUrl = err.request?.['res']?.['responseUrl'] || err.config?.url
-    await spider.middlewareManager.callAll('onError', reqUrl, async (cb) => cb.call(spider, err))
+    await spider.middlewareManager.call('onError', reqUrl, async (cb) => cb.call(spider, err))
     return err
   }
 

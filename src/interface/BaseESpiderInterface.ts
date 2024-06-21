@@ -4,15 +4,15 @@ import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
 import {sleep} from "@/utils/methods";
 import {isNumber} from "lodash-es";
 import {MiddlewareManager} from "@/middleware/MiddlewareManager";
-import {BaseESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
+import {BaseESpiderInterfaceMiddleware, ESpiderUrlMatchMiddleware} from "@/middleware/SpiderMiddleware";
 
 export abstract class BaseESpiderInterface<
   Options extends BaseESpiderInterfaceOptions,
   Middleware extends BaseESpiderInterfaceMiddleware
-> extends BaseESpiderInterfaceMiddleware 
-  implements BaseESpiderInterfaceMiddleware{
-  
-  [key: `@${string}`]: () => Middleware
+> extends BaseESpiderInterfaceMiddleware
+  implements BaseESpiderInterfaceMiddleware {
+
+  [key: `@${string}`]: () => ESpiderUrlMatchMiddleware
 
   public declare name: string
   public readonly options: Options & Record<any, any>
@@ -21,7 +21,7 @@ export abstract class BaseESpiderInterface<
   protected abstract _initialized: boolean
   public readonly requestQueue: PQueue
   public readonly dbQueue: PQueue
-  public readonly middlewareManager: MiddlewareManager<Middleware>
+  public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderUrlMatchMiddleware>
   public readonly fingerprint: RequestDupeFilter
 
   protected constructor() {
@@ -31,7 +31,7 @@ export abstract class BaseESpiderInterface<
       interval: 0
     })
     this.dbQueue = new PQueue()
-    this.middlewareManager = new MiddlewareManager()
+    this.middlewareManager = new MiddlewareManager(this)
     this.options = {} as any
     Object.assign(this.options, <BaseESpiderInterfaceOptions>{
       name: '',
@@ -73,7 +73,7 @@ export abstract class BaseESpiderInterface<
     this.fingerprint.closeAutoPersistence()
     this.requestQueue.clear()
     this.dbQueue.clear()
-    await this.middlewareManager.callAll('onClose')
+    await this.middlewareManager.callRoot('onClose')
   }
 
   /**
@@ -83,7 +83,7 @@ export abstract class BaseESpiderInterface<
     this.fingerprint.closeAutoPersistence()
     this.requestQueue.pause()
     this.dbQueue.pause()
-    await this.middlewareManager.callAll('onPause')
+    await this.middlewareManager.callRoot('onPause')
   }
 
   /**
@@ -103,7 +103,7 @@ export abstract class BaseESpiderInterface<
     this.fingerprint.start()
     this.requestQueue.start()
     this.dbQueue.start()
-    await this.middlewareManager.callAll('onStart')
+    await this.middlewareManager.callRoot('onStart')
   }
 
   /**
@@ -113,7 +113,7 @@ export abstract class BaseESpiderInterface<
     if (typeof callback !== 'function') {
       throw new Error(`[addToDatabaseQueue] 入参应该是一个函数`)
     }
-    this.dbQueue.add(() => callback()).then()
+    this.dbQueue.add(() => callback.call(this)).then()
   }
 }
 

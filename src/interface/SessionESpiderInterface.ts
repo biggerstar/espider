@@ -8,7 +8,7 @@ import {SessionESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
 export abstract class SessionESpiderInterface<
   Options extends SessionESpiderInterfaceOptions = SessionESpiderInterfaceOptions,
   Middleware extends SessionESpiderInterfaceMiddleware = SessionESpiderInterfaceMiddleware
-> extends BaseESpiderInterface<Options, Middleware> 
+> extends BaseESpiderInterface<Options, Middleware>
   implements SessionESpiderInterfaceMiddleware {
 
   protected sessionList: Array<SessionItem> = []
@@ -57,30 +57,19 @@ export abstract class SessionESpiderInterface<
   /**
    *  获取所有可用并且没在队列中等待的 session
    * */
-  private getAllAvailableSessions() {
+  public getAllAvailableSessions() {
     return this.sessionList.filter(session => !session.pending)
   }
 
   /**
-   * 随机获取当前可用并且没在队列中等待的 session
-   * queueVacancy 是获取个数， 默认是并发队列中相对并发总数所空余的个数
-   * 获取时如果 queueVacancy 要求个数超过当前 session 个数， 此时可以认为返回的是所有的 session， 并且数量少于 queueVacancy 所指定的值
+   * 随机获取一个可用并且没在队列中等待的 session
    * */
-  private getRandomAvailableSessions(queueVacancy?: number): AxiosSessionInstance[] {
-    queueVacancy = queueVacancy || this.requestQueue.concurrency - this.requestQueue.pending - this.requestQueue.size
+  public async getAvailableSession() {
     const availableSessionList = this.getAllAvailableSessions()
-    let patchTaskSessionNum = Math.min(queueVacancy, availableSessionList.length)
-    const patchSessionList = []
-    while (true) {
-      if (patchSessionList.length === patchTaskSessionNum) {
-        break
-      }
-      const session = getRandomItemForArray(availableSessionList)
-      if (!patchSessionList.includes(session)) {
-        patchSessionList.push(session)
-      }
+    if (!availableSessionList.length) {
+      return this._createNewSession()
     }
-    return patchSessionList
+    return getRandomItemForArray(availableSessionList)
   }
 
   private async _createNewSession() {
@@ -91,10 +80,10 @@ export abstract class SessionESpiderInterface<
     this.sessionList.push({
       pending: false,
       session,
-      lastUsageTime: Date.now()
+      createTime: Date.now()
     })
-    interceptorsSpider(this, session)
-    await this.middlewareManager.callAll('onCreateSession', null, async (cb) => await cb.call(this, session))
+    interceptorsSpider(<any>this, session)
+    await this.middlewareManager.callRoot('onCreateSession', async (cb) => await cb.call(this, session))
     return session
   }
 
@@ -102,31 +91,18 @@ export abstract class SessionESpiderInterface<
    * 开始轮询监听各项数据，自动管理调度
    * */
   private _startListening(): void {
-    if (this._running) return
     const removeExpirationSession = () => {
       this.sessionList = this.sessionList
         .filter(item => {
           if (this.options.expirationSessionTime === null) return true
-          return (Date.now() - item.lastUsageTime) < this.options.expirationSessionTime
+          return (Date.now() - item.createTime) < this.options.expirationSessionTime
         })
     }
 
     const addNewRequest = () => {
       const sessionVacancy = this.requestQueue.concurrency - this.sessionList.length
-      this.addRequest(sessionVacancy)
-        .then((requestList) => {
-          return this.requestQueue.add(() => {
-            const availableSessions = this.getRandomAvailableSessions(sessionVacancy)
-            requestList.forEach(async (request, index) => {
-              let session = availableSessions[index]
-              if (!session) session = await this._createNewSession()
-              const sessionInfo = this.getSession(session.sessionId)
-              sessionInfo.lastUsageTime = Date.now()
-              sessionInfo.pending = true
-              session.request(request).then()
-            })
-          })
-        })
+      if (sessionVacancy <= 0) return
+      this.autoLoadRequest(sessionVacancy).then()
     }
 
     const listening = () => {
@@ -138,10 +114,25 @@ export abstract class SessionESpiderInterface<
   }
 
   /**
-   * 根据自动调度在子类实现新任务的添加
-   * len 为当前可添加的任务个数
+   * 进行请求，该操作不进入队列
    * */
-  protected async addRequest(_: number): Promise<AxiosSessionRequestConfig[]> {
-    throw new Error('请实现 addRequest 函数')
+  async doRequest(req: AxiosSessionRequestConfig) {
+    const session = await this.getAvailableSession()
+    const sessionInfo = this.getSession(session.sessionId)
+    sessionInfo.pending = true
+    const pendingRequest = session.request(req)
+    pendingRequest.finally(() => {
+      sessionInfo.pending = false
+    })
+    return pendingRequest
+  }
+
+  /**
+   * 根据调度在子类实现新任务的自动添加
+   * len 为当前可添加的任务个数
+   * 该函数需要从数据库中取出一个或者多个任务，并添加到请求任务队列
+   * */
+  protected async autoLoadRequest(_: number) {
+    throw new Error('请实现 autoLoadRequest 函数')
   }
 }

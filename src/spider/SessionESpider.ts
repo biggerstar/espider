@@ -1,18 +1,25 @@
 import {Op, Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
-import {SessionESpiderOptions} from "@/typings";
-import {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
-import {RequestStatusEnum} from "@/constant";
+import {
+  AddRequestTaskOptions,
+  AddRequestTaskOtherOptions,
+  SessionESpiderOptions
+} from "@/typings";
 import path from "node:path";
 import {createRequestDBCache} from "@/db/sequelize";
 import {everyHasKeys} from "@/utils/methods";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
 import {SessionESpiderMiddleware} from "@/middleware/SpiderMiddleware";
+import {isObject, pick} from "lodash-es";
+import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
 
 export class SessionESpider
-  extends SessionESpiderInterface<SessionESpiderOptions, SessionESpiderMiddleware>
+  extends SessionESpiderInterface<
+    SessionESpiderOptions,
+    SessionESpiderMiddleware
+  >
   implements SessionESpiderMiddleware {
-  
+
   protected _running: boolean;
   protected _closed: boolean;
   protected _initialized: boolean;
@@ -37,6 +44,7 @@ export class SessionESpider
   }
 
   public async close(): Promise<void> {
+    if (!this._running) return
     this._running = false
     this._closed = true
     await super.close()
@@ -45,15 +53,19 @@ export class SessionESpider
         .onIdle()
         .then(() => {
           // 等待 DB 任务都完成才结束，防止入库中途出现数据丢失
-          setTimeout(async () => {
-            this.sequelize
-              .close()
-              .then(async () => {
-                await this.middlewareManager.callAll('onClosed')
-                resolve(void 0)
-              })
-              .catch(reject)
-          }, 1000)
+          let timer = setInterval(() => {
+            const inTaskCont = this.dbQueue.pending + this.dbQueue.size
+            if (inTaskCont <= 0) {
+              this.sequelize
+                .close()
+                .then(async () => {
+                  await this.middlewareManager.callRoot('onClosed')
+                  resolve(void 0)
+                })
+                .catch(reject)
+              clearInterval(timer)
+            }
+          }, 50)
         })
     })
   }
@@ -83,62 +95,73 @@ export class SessionESpider
     }
     this._initialized = true
     this._running = true
-    await super.start();
+    await super.start()
   }
 
   /**
    * 添加任务到本地数据库队列中，支持断点续爬
+   * meta字段应该是个可序列化为字符串的普通对象
    * */
-  public addRequestTask<T extends Partial<AxiosSessionRequestConfig>, R extends any>(req: T | string): R | void {
-    let finallyReq: Partial<AxiosSessionRequestConfig> = typeof req === 'string' ? {url: req} : req
-    if (this.fingerprint.has(finallyReq)) {
+  public addRequestTask<T extends Partial<AxiosSessionRequestConfig>, R extends any>(
+    req: T | string,
+    options: Partial<AddRequestTaskOtherOptions> = {}
+  ): R | void {
+    let finallyReq: Partial<AddRequestTaskOptions> = typeof req === 'string' ? {url: req} : req
+    if (!finallyReq.url) {
+      throw new Error('[addRequestTask] 您添加的请求任务应该包含 url')
+    }
+    if (!finallyReq.meta || !isObject(finallyReq.meta)) {
+      throw new Error('[addRequestTask] meta 应该是一个对象')
+    }
+    const fp = this.fingerprint.get(finallyReq)
+    if (this.fingerprint.hasFP(fp)) {
       // console.log('请求指纹重复')
       return
     }
-    this.dbQueue.add(() => {
-      return this.requestQueueModel.create({
-        status: RequestStatusEnum.READY,
+    this.dbQueue.add(async () => {
+      const taskData = {
+        taskId: fp,
         data: JSON.stringify(req),
-        timestamp: Date.now()
-      })
+        priority: options.priority || 0,
+        timestamp: Date.now(),
+      }
+      const [_, created] = await this.requestQueueModel
+        .findOrCreate({
+          where: {taskId: fp},
+          defaults: taskData
+        })
+      if (!created) {
+        await this.requestQueueModel.update(taskData, {
+          where: {taskId: fp}
+        })
+      }
     }).then()
   }
 
   /**
-   * 根据调度实现
+   * 根据调度实现从数据库中取出所需个数的请求进行实现
    * */
-  public async addRequest(len: number) {
+  public async autoLoadRequest(len: number) {
     console.log('当前所需请求数量', len)
-    let finallyReq: AxiosSessionRequestConfig
-    let dbResRef: Model
-    this.requestQueueModel.findOne({
-      where: {
-        status: {
-          [Op.or]: [RequestStatusEnum.READY]
-        }
-      }
-    }).then(dbRes => {
-      if (dbRes) {
-        dbResRef = dbRes
-        this.middlewareManager.callAll('onRequestTask', null, async (cb) => {
-          const resultReq = await cb.call(this, dbRes.dataValues)
-          finallyReq = resultReq || finallyReq
-        }).then()
-        dbRes.set('status', RequestStatusEnum.PENDING)
-        this.dbQueue.add(() => dbRes.save()).then()
-      }
+    const foundTaskList = await this.requestQueueModel
+      .findAll({
+        limit: len,
+        order: [['priority', 'ASC']]
+      })
+    foundTaskList.forEach(dbRes => {
+      const task = dbRes.dataValues
+      if (!task.meta) task.meta = {}
+      let requestConfig = JSON.parse(task.data)
+      this.requestQueue.add(async () => {
+        await this.middlewareManager.call(
+          'onRequestTask',
+          requestConfig.url,
+          async (cb) => {
+            await cb.call(this, task)
+          })
+        await this.doRequest(requestConfig).finally(async () => {
+        })
+      })
     })
-    if (dbResRef) {
-      let response: AxiosSessionResponse
-      // return session.request(finallyReq as any)
-      //   .finally(async () => {
-      //     const reqUrl = response?.request?.['res']?.['responseUrl'] || response?.config?.url
-      //     await this._callMiddleware('onCompleted', reqUrl, async (cb) => cb.call(this, response.request, response))
-      //     dbResRef.set('status', RequestStatusEnum.DONE)
-      //     this.dbQueue.add(() => dbResRef.save()).then()
-      //   })
-    }
-    return []
   }
-
 }

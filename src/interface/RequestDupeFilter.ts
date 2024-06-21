@@ -105,6 +105,7 @@ export class RequestDupeFilter {
     let headerString = ''
     let dataString = ''
     let query = urls.searchParams.toString()
+    let method = req.method ? req.method.toLowerCase() : 'get'
     if (typeof finallyReq.headers === 'object') {
       headerString = Object.keys(finallyReq.headers)
         .toSorted()
@@ -120,22 +121,29 @@ export class RequestDupeFilter {
         .map(name => `${name}=${finallyReq.data[name]}`)
         .toString()
     }
-    const seed = `${urlPath}?${query}+${headerString}+${dataString}`
+    const seed = `${method}+${urlPath}?${query}+${headerString}+${dataString}`
     return md5(seed)
+  }
+
+  /**
+   * 获取该请求的指纹
+   * */
+  public get(req: Partial<AxiosSessionRequestConfig>) {
+    return this.filterRule(req)
   }
 
   /**
    * 判断过滤器是否存在该 请求对象指纹
    * */
   public has(req: Partial<AxiosSessionRequestConfig>): boolean {
-    return this.hasFP(this.filterRule(req))
+    return this.hasFP(this.get(req))
   }
 
   /**
    * 添加来自 请求对象的 指纹
    * */
   public add(req: Partial<AxiosSessionRequestConfig>): void {
-    this.addFP(this.filterRule(req))
+    this.addFP(this.get(req))
   }
 
   /**

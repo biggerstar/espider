@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@biggerstar/axios-session':
-        specifier: ^0.3.9
-        version: 0.3.9(debug@4.3.5)
+        specifier: ^0.3.10
+        version: 0.3.10(debug@4.3.5)
       '@biggerstar/mitt-bus':
         specifier: ^0.0.10
         version: 0.0.10
@@ -131,8 +131,8 @@ packages:
     resolution: {integrity: sha512-XEFXSlxiG5td2EJRe8vOmRbaXVgfcBlszKujvVmWIK/UpywWljQCfzAv3RQCGujWQ1RD4YYWEAqDXfuJiy8f5Q==}
     engines: {node: '>=6.9.0'}
 
-  '@biggerstar/axios-session@0.3.9':
-    resolution: {integrity: sha512-9wF6Y/23ZOhFQHoy55E2vGgBHFnHQGIddDl96WXCKto+qJPUOAMY8Bs/Z7SmBz6bXdpP5aWIaQooTeVDrZbV/g==}
+  '@biggerstar/axios-session@0.3.10':
+    resolution: {integrity: sha512-gg4Yp+crnyeS8tSFV3xkLZnI6aEgS/yGTzCM51t+NQZYUR9A+5TgdH//9Zp1bnKas/0Frbkhki/MgupFDivpvA==}
 
   '@biggerstar/mitt-bus@0.0.10':
     resolution: {integrity: sha512-2rk8vPFh4t1PKSElfaKuXpLyFGBs5/1Ny3tegU5Lphikl5e2AVTBI3r76OcNkooWHRgdSrHrBm7hw8I6YNRDrA==}
@@ -2234,7 +2234,7 @@ snapshots:
       '@babel/helper-validator-identifier': 7.24.7
       to-fast-properties: 2.0.0
 
-  '@biggerstar/axios-session@0.3.9(debug@4.3.5)':
+  '@biggerstar/axios-session@0.3.10(debug@4.3.5)':
     dependencies:
       '@types/tough-cookie': 4.0.5
       axios: 1.7.2(debug@4.3.5)
