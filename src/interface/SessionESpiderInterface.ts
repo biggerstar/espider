@@ -1,9 +1,9 @@
 import {AxiosSessionInstance, AxiosSessionRequestConfig, createAxiosSession} from "@biggerstar/axios-session";
 import {interceptorsSpider} from "@/functions/interceptorsSpider";
-import {getRandomItemForArray} from "@/utils/methods";
 import {SessionESpiderInterfaceOptions, SessionItem} from "@/typings";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
 import {SessionESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
+import {choice} from "@biggerstar/tools";
 
 export abstract class SessionESpiderInterface<
   Options extends SessionESpiderInterfaceOptions = SessionESpiderInterfaceOptions,
@@ -69,7 +69,7 @@ export abstract class SessionESpiderInterface<
     if (!availableSessionList.length) {
       return this._createNewSession()
     }
-    return getRandomItemForArray(availableSessionList)
+    return choice(availableSessionList)
   }
 
   private async _createNewSession() {

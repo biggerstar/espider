@@ -76,29 +76,39 @@ export class Test extends SessionESpider {
         console.log('onRequestTask')
       },
       onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
-        // console.log('accurate request', req);
+        console.log('onRequest')
       },
       onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
+        console.log('onResponse')
         // console.log('accurate response', req, res.data.slice(0, 500));
         this.addToDatabaseQueue(() => {
           console.log('DatabaseQueue 回调')
         })
       },
       onError(this: SessionESpider, err: AxiosSessionError) {
-        console.log('accurate err', err.message)
+        console.log('onError')
+        console.log(err.message)
       },
     }
   }
 }
 
-
 const spider = new Test()
 spider
   .setOptions({
-    requestConcurrency: 1
+    requestConcurrency: 1,
+    dupeFilterOptions: {}
   })
-  .start()
+spider.start()
   .then(() => {
     console.log('启动成功')
   })
-// const reqUrl = response?.request?.['res']?.['responseUrl'] || response?.config?.url
+setTimeout(() => {
+  spider.pause().then()
+}, 2000)
+setTimeout(() => {
+  spider.start().then()
+}, 5000)
+setTimeout(() => {
+  spider.close().then()
+}, 8000)

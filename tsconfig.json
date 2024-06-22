@@ -23,7 +23,7 @@
     "experimentalDecorators": true,
     "noImplicitAny": false,
     "strictNullChecks": false,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "importHelpers": true,
     "paths": {
       "@/*": [

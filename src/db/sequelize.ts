@@ -1,5 +1,4 @@
 import {DataTypes, Sequelize} from 'sequelize'
-import {data} from "cheerio/lib/api/attributes";
 
 export async function createRequestDBCache(sequelizeConnect: Sequelize, name: string) {
   if (!name) {

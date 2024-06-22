@@ -1,6 +1,6 @@
-import {isFunction} from "lodash-es";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
 import {BaseESpiderInterfaceOptions} from "@/typings";
+import {isFunction} from "@biggerstar/tools";
 
 const rootMiddlewareEvent = [
   'onStart',
@@ -45,7 +45,7 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
   }
 
   /**
-   * 回调中间件事件
+   * 回调 url 匹配的中间件事件
    * */
   public async call(
     type: keyof UrlMatchMiddleware,

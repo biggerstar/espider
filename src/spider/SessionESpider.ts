@@ -1,4 +1,4 @@
-import {Op, Sequelize} from "sequelize";
+import {Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
 import {
   AddRequestTaskOptions,
@@ -7,11 +7,10 @@ import {
 } from "@/typings";
 import path from "node:path";
 import {createRequestDBCache} from "@/db/sequelize";
-import {everyHasKeys} from "@/utils/methods";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
 import {SessionESpiderMiddleware} from "@/middleware/SpiderMiddleware";
-import {isObject, pick} from "lodash-es";
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
+import {everyHasKeys, isObject} from "@biggerstar/tools";
 
 export class SessionESpider
   extends SessionESpiderInterface<
@@ -20,8 +19,6 @@ export class SessionESpider
   >
   implements SessionESpiderMiddleware {
 
-  protected _running: boolean;
-  protected _closed: boolean;
   protected _initialized: boolean;
   public sequelize: Sequelize
   private requestQueueModel: ModelStatic<Model>
@@ -29,8 +26,6 @@ export class SessionESpider
   public constructor() {
     super()
     this._initialized = false
-    this._running = false
-    this._closed = false
   }
 
   /**
@@ -38,15 +33,17 @@ export class SessionESpider
    * */
   public setOptions(opt: Partial<SessionESpiderOptions> = {}): this {
     super.setOptions(opt)
-    const whiteList = ['requestQueueModel', 'sequelize']
+    const whiteList: Array<keyof SessionESpiderOptions> = ['requestQueueModel', 'sequelize']
     whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
     return this
   }
 
   public async close(): Promise<void> {
-    if (!this._running) return
-    this._running = false
-    this._closed = true
+    if (!this._initialized) {
+      throw new Error('[pause] 您的爬虫还未启动.')
+    }
+    if (!['running', 'pause'].includes(this._runStatus)) return
+    this._runStatus = 'closed'
     await super.close()
     return new Promise((resolve, reject) => {
       this.dbQueue
@@ -60,6 +57,7 @@ export class SessionESpider
                 .close()
                 .then(async () => {
                   await this.middlewareManager.callRoot('onClosed')
+                  console.log(11111111111111111111)
                   resolve(void 0)
                 })
                 .catch(reject)
@@ -67,35 +65,44 @@ export class SessionESpider
             }
           }, 50)
         })
+        .catch(reject)
+        .finally(() => {
+          resolve(void 0)
+        })
     })
   }
 
   public async pause(): Promise<void> {
-    if (!this._running) return
-    this._running = false
+    if (!this._initialized) {
+      throw new Error('[pause] 您的爬虫还未启动.')
+    }
+    if (!['running', 'ready'].includes(this._runStatus)) return
+    this._runStatus = 'pause'
     await super.pause()
   }
 
-  public async start() {
-    if (this._running) return
-    if (this._closed) {
+  public async start(): Promise<void> {
+    if (this._runStatus === 'closed') {
       throw new Error('[start] 您的爬虫已经关闭， 不能再次运行')
     }
-    if (!this._initialized) {
-      if (!this.sequelize) {  // 如果没有手动定义 sequelize 连接，则使用内部默认
-        this.sequelize = new Sequelize({
-          dialect: 'sqlite',
-          storage: path.resolve(this.options.cacheDirPath, `${this.name}.request.sqlite3`),
-          logging: false
-        })
+    if (!['pause', 'ready'].includes(this._runStatus)) return
+    return new Promise(async (resolve, reject) => {
+      if (!this._initialized) {
+        if (!this.sequelize) {  // 如果没有手动定义 sequelize 连接，则使用内部默认
+          this.sequelize = new Sequelize({
+            dialect: 'sqlite',
+            storage: path.resolve(this.options.cacheDirPath, `${this.name}.request.sqlite3`),
+            logging: false
+          })
+        }
+        if (!this.requestQueueModel) {
+          this.requestQueueModel = await createRequestDBCache(this.sequelize, this.name)
+        }
       }
-      if (!this.requestQueueModel) {
-        this.requestQueueModel = await createRequestDBCache(this.sequelize, this.name)
-      }
-    }
-    this._initialized = true
-    this._running = true
-    await super.start()
+      this._initialized = true
+      await super.start()
+      resolve(void 0)
+    })
   }
 
   /**
@@ -142,7 +149,7 @@ export class SessionESpider
    * 根据调度实现从数据库中取出所需个数的请求进行实现
    * */
   public async autoLoadRequest(len: number) {
-    console.log('当前所需请求数量', len)
+    // console.log('当前所需请求数量', len)
     const foundTaskList = await this.requestQueueModel
       .findAll({
         limit: len,

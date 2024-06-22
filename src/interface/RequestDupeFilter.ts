@@ -1,31 +1,31 @@
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
 import pkg, {BloomFilter} from "bloom-filters";
 import {DupeFilterOptions} from "@/typings";
-import {everyHasKeys} from "@/utils/methods";
 import path from "node:path";
 import fs from "node:fs";
 import md5 from "md5";
+import {clearPromiseInterval, everyHasKeys, setPromiseInterval} from "@biggerstar/tools";
 
 export class RequestDupeFilter {
-  public supportRequestSize: number
-  public dupeFilterCacheFilePath: string
+  public name: string
+  public cacheDirPath: string
   public requestFilterReset: boolean
   public hashes: number
+  public supportRequestSize: number
+  public dupeFilterCacheFilePath: string
   public dupePersistenceInterval: number
-  private _persistenceTimer: NodeJS.Timeout
-  public _running: boolean
   public enableDupeFilter: boolean
+  private _persistenceTimer: number
+  public _running: boolean
   public filterRule: (req: Partial<AxiosSessionRequestConfig>) => string
   private filter: BloomFilter
   private runtimeFilter: BloomFilter
   private runtimeFilterHash: string[]
-  public cacheDirPath: string
-  public name: string
 
   constructor() {
     this.supportRequestSize = 1e8   // 一亿
     this.hashes = 2
-    this.dupePersistenceInterval = 5 * 1000
+    this.dupePersistenceInterval = 6.18 * 1000
     this.enableDupeFilter = true
     this.requestFilterReset = false
     this.runtimeFilterHash = []
@@ -36,18 +36,18 @@ export class RequestDupeFilter {
    * 进行配置
    * */
   public setOptions(opt: Partial<DupeFilterOptions> & Record<any, any> = {}) {
-    const whiteList = [
+    const whiteList: Array<keyof DupeFilterOptions> = [
       'name',
+      'cacheDirPath',
       'requestFilterReset',
       'hashes',
-      'supportSize',
-      'filterCacheFilePath',
       'supportRequestSize',
+      'dupeFilterCacheFilePath',
+      'dupePersistenceInterval',
+      'enableDupeFilter',
       'filterRule',
-      'cacheDirPath',
-      'enableDupeFilter'
     ]
-    whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
+    whiteList.forEach((name: any) => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
   }
 
   /**
@@ -60,10 +60,6 @@ export class RequestDupeFilter {
     if (!this.enableDupeFilter) return;
     if (this._running) return
     this.dupeFilterCacheFilePath = path.resolve(this.cacheDirPath, `${this.name}.request.filter`)
-    this._persistenceTimer = setInterval(() => {
-      clearInterval(this._persistenceTimer)
-      this._persistence()
-    }, this.dupePersistenceInterval)
     if (!this.filter) {
       const existsFilterCache = fs.existsSync(this.dupeFilterCacheFilePath)
       if (this.requestFilterReset || !existsFilterCache) {
@@ -78,12 +74,19 @@ export class RequestDupeFilter {
         }
       }
     }
+    clearPromiseInterval(this._persistenceTimer)
+    this._persistenceTimer = setPromiseInterval(async () => {
+      this._persistence()
+    }, this.dupePersistenceInterval, {
+      doFirst: false,
+      doLast: true,
+    })
     this.runtimeFilter = new pkg.BloomFilter(this.supportRequestSize, this.hashes)
     this._running = true
   }
 
   /**
-   * 进行持久化，用于支持断点续爬
+   * 进行指纹持久化，用于支持断点续爬
    * */
   private _persistence() {
     this.runtimeFilterHash.forEach(hash => this.filter.add(hash))
@@ -91,7 +94,9 @@ export class RequestDupeFilter {
     const basePath = path.dirname(this.dupeFilterCacheFilePath)
     if (basePath) fs.mkdirSync(basePath, {recursive: true})
     const fpData = this.filter.saveAsJSON()
-    fs.writeFileSync(this.dupeFilterCacheFilePath, JSON.stringify(fpData), 'utf8')
+    fs.writeFile(this.dupeFilterCacheFilePath, JSON.stringify(fpData), {encoding: 'utf-8'}, () => {
+      // console.log('持久化请求指纹数据成功')
+    })
   }
 
   /**
@@ -165,7 +170,7 @@ export class RequestDupeFilter {
    * 关闭自动持久化
    * */
   public closeAutoPersistence() {
-    clearInterval(this._persistenceTimer)
+    clearPromiseInterval(this._persistenceTimer)
     this._running = false
   }
 }

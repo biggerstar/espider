@@ -1,10 +1,10 @@
 import {BaseESpiderInterfaceOptions} from "@/typings";
 import PQueue from "p-queue";
 import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
-import {sleep} from "@/utils/methods";
-import {isNumber} from "lodash-es";
 import {MiddlewareManager} from "@/middleware/MiddlewareManager";
-import {BaseESpiderInterfaceMiddleware, ESpiderUrlMatchMiddleware} from "@/middleware/SpiderMiddleware";
+import {BaseESpiderInterfaceMiddleware, ESpiderUrlMatchMiddleware} from "@/middleware";
+import {clearPromiseInterval, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
+
 
 export abstract class BaseESpiderInterface<
   Options extends BaseESpiderInterfaceOptions,
@@ -16,13 +16,14 @@ export abstract class BaseESpiderInterface<
 
   public declare name: string
   public readonly options: Options & Record<any, any>
-  protected abstract _running: boolean
-  protected abstract _closed: boolean
   protected abstract _initialized: boolean
   public readonly requestQueue: PQueue
   public readonly dbQueue: PQueue
   public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderUrlMatchMiddleware>
   public readonly fingerprint: RequestDupeFilter
+  protected _runStatus: 'pause' | 'ready' | 'closed' | 'running'
+  /** 用于保持爬虫实例的运行，只有当程序关闭的时候才会释放 */
+  private _keepProcessTimer: number
 
   protected constructor() {
     super();
@@ -30,6 +31,7 @@ export abstract class BaseESpiderInterface<
     this.requestQueue = new PQueue({
       interval: 0
     })
+    this._runStatus = 'ready'
     this.dbQueue = new PQueue()
     this.middlewareManager = new MiddlewareManager(this)
     this.options = {} as any
@@ -70,6 +72,7 @@ export abstract class BaseESpiderInterface<
    * 关闭爬虫
    * */
   public async close(): Promise<void> {
+    clearPromiseInterval(this._keepProcessTimer)
     this.fingerprint.closeAutoPersistence()
     this.requestQueue.clear()
     this.dbQueue.clear()
@@ -92,6 +95,13 @@ export abstract class BaseESpiderInterface<
   public async start(): Promise<void> {
     if (!this.name) {
       throw new Error('请指定爬虫名称 name')
+    }
+    if (!this._keepProcessTimer) {
+      this._keepProcessTimer = setPromiseInterval(async () => {
+        if (this._runStatus === 'closed') {
+          clearPromiseInterval(this._keepProcessTimer)
+        }
+      }, 3000)
     }
     this.options.name = this.name
     this.setOptions(this.options)

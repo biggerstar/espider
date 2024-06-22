@@ -42,7 +42,7 @@ export type BaseESpiderInterfaceOptions = {
   /**
    * 请求去重选项配置
    * */
-  dupeFilterOptions: DupeFilterOptions
+  dupeFilterOptions: Partial<DupeFilterOptions>
   /**
    * 缓存目录
    * */
@@ -82,7 +82,7 @@ export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpider
   requestQueueModel: ModelStatic<Model>
 }
 
-export type AddRequestTaskAllowField =  'meta' | 'method' | 'url' | 'data' | 'headers'
+export type AddRequestTaskAllowField = 'meta' | 'method' | 'url' | 'data' | 'headers'
 export type AddRequestTaskOptions = Pick<AxiosSessionRequestConfig, AddRequestTaskAllowField>
 export type BaseSpiderEventNames = keyof BaseESpiderInterfaceMiddleware
 export type SessionESpiderEventNames = BaseSpiderEventNames | 'onCreateSession'
