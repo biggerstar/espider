@@ -1,5 +1,9 @@
-import {AxiosSessionInstance, AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
-import {AxiosError} from "axios";
+import {
+  AxiosSessionError,
+  AxiosSessionInstance,
+  AxiosSessionRequestConfig,
+  AxiosSessionResponse
+} from "@biggerstar/axios-session";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
 
 /**
@@ -20,7 +24,7 @@ export function interceptorsSpider(spider: SessionESpiderInterface, session: Axi
     return res
   }
 
-  async function catchErr(err: AxiosError) {
+  async function catchErr(err: AxiosSessionError) {
     const reqUrl = err.request?.['res']?.['responseUrl'] || err.config?.url
     await spider.middlewareManager.call('onError', reqUrl, async (cb) => cb.call(spider, err))
     return err

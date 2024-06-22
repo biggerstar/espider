@@ -6,7 +6,6 @@ import {
 } from "@biggerstar/axios-session";
 import {SpiderTask} from "@/typings";
 import {SessionESpider} from "@/spider";
-import {ESpiderUrlMatchMiddleware} from "@/middleware";
 
 export class Test extends SessionESpider {
   public name = 'test'
@@ -70,12 +69,13 @@ export class Test extends SessionESpider {
     })
   }
 
-  ['@baidu.com|weibo.com'](): ESpiderUrlMatchMiddleware {
+  '@baidu.com|weibo.com' = () => {
     return {
-      onRequestTask<T extends SpiderTask<Record<any, any>>>(task: T, session: AxiosSessionInstance): Promise<void> | void {
+      onRequestTask<T extends SpiderTask>(task: T): Promise<void> | void {
         console.log('onRequestTask')
+        console.log(task)
       },
-      onRequest(this: SessionESpider, req: AxiosSessionRequestConfig) {
+      onRequest<T extends AxiosSessionRequestConfig>(req: T, session: AxiosSessionInstance): Promise<void | T> | void | T {
         console.log('onRequest')
       },
       onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {

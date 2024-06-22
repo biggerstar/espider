@@ -2,8 +2,8 @@ import {BaseESpiderInterfaceOptions} from "@/typings";
 import PQueue from "p-queue";
 import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
 import {MiddlewareManager} from "@/middleware/MiddlewareManager";
-import {BaseESpiderInterfaceMiddleware, ESpiderUrlMatchMiddleware} from "@/middleware";
-import {clearPromiseInterval, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
+import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middleware";
+import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
 
 
 export abstract class BaseESpiderInterface<
@@ -12,14 +12,14 @@ export abstract class BaseESpiderInterface<
 > extends BaseESpiderInterfaceMiddleware
   implements BaseESpiderInterfaceMiddleware {
 
-  [key: `@${string}`]: () => ESpiderUrlMatchMiddleware
+  [matchUrl: `@${string}`]: () => ESpiderRequestMiddleware
 
   public declare name: string
   public readonly options: Options & Record<any, any>
   protected abstract _initialized: boolean
   public readonly requestQueue: PQueue
   public readonly dbQueue: PQueue
-  public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderUrlMatchMiddleware>
+  public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderRequestMiddleware>
   public readonly fingerprint: RequestDupeFilter
   protected _runStatus: 'pause' | 'ready' | 'closed' | 'running'
   /** 用于保持爬虫实例的运行，只有当程序关闭的时候才会释放 */
@@ -53,11 +53,21 @@ export abstract class BaseESpiderInterface<
       return res
     }
     /*---------------------提取主爬虫事件钩子------------------------*/
-    const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
-    Object.keys(descriptors)
-      .filter(keyName => keyName.startsWith('@'))
-      .forEach(name => this.middlewareManager.addMiddleware(name.slice(1), this[name]()))
-    this.middlewareManager.addRootMiddleware(<any>this)
+    // 这里是可以直接使用 Promise 的，因为启动也是 Promise， 不会影响正常运行
+    Promise.resolve().then(() => {
+      /* 主蜘蛛中间件 */
+      this.middlewareManager.addRootMiddleware(<any>this)
+      /* 定义到原型的地址匹配中间件 */
+      const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
+      Object.keys(descriptors)
+        .filter(keyName => keyName.startsWith('@') && isFunction(this[keyName]))
+        .forEach(name => this.middlewareManager.addMiddleware(name.slice(1), this[name]()))
+      /* 直接复制到实例的地址的请求中间件 */
+      for (const name in this) {
+        if (!name.startsWith('@') || !isFunction(this[name])) continue
+        this.middlewareManager.addMiddleware(name.slice(1), this[name as any]())
+      }
+    })
   }
 
   public setOptions(opt: Partial<BaseESpiderInterfaceOptions>) {

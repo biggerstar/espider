@@ -19,7 +19,7 @@ export async function createRequestDBCache(sequelizeConnect: Sequelize, name: st
       type: DataTypes.TEXT,
       allowNull: false
     },
-    timestamp: {  // axios 请求字符串
+    createTime: {  // axios 请求字符串
       type: DataTypes.INTEGER,
       allowNull: false
     },

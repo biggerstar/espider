@@ -93,7 +93,7 @@ export type BusEventData<EventNames extends BaseSpiderEventNames> = {
 }
 
 export type SessionItem = { pending: boolean, session: AxiosSessionInstance, createTime: number }
-export type SpiderTask<Task extends Record<any, any> | string> = {
+export type SpiderTask<Task extends Record<any, any> = Record<any, any>> = {
   status: RequestStatusEnum,
   data: Task,
   meta: Record<any, any>

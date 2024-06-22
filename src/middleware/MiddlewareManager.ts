@@ -10,7 +10,7 @@ const rootMiddlewareEvent = [
   'onCreateSession',
 ]
 
-const urlMatchMiddlewareEvent = [
+const requestMiddlewareEvent = [
   'onRequestTask',
   'onRequest',
   'onResponse',
@@ -22,12 +22,12 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
   public middleware: Record<string, UrlMatchMiddleware> = {}
   public rootRootMiddleware: RootMiddleware
   public rootMiddlewareEvent: Array<keyof RootMiddleware | string>
-  public urlMatchMiddlewareEvent: Array<keyof UrlMatchMiddleware | string>
+  public requestMiddlewareEvent: Array<keyof UrlMatchMiddleware | string>
 
   constructor(spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, RootMiddleware>) {
     this.spider = spider
     this.rootMiddlewareEvent = rootMiddlewareEvent
-    this.urlMatchMiddlewareEvent = urlMatchMiddlewareEvent
+    this.requestMiddlewareEvent = requestMiddlewareEvent
   }
 
   /**
@@ -38,7 +38,7 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
   }
 
   /**
-   * 添加中间件
+   * 添加请求中间件
    * */
   public addMiddleware(name: string, middleware: UrlMatchMiddleware) {
     this.middleware[name] = middleware
@@ -52,7 +52,7 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
     matchUrl: string | null = null,
     callback?: (cb: Function) => Promise<any>
   ) {
-    if (!this.urlMatchMiddlewareEvent.includes(type)) return
+    if (!this.requestMiddlewareEvent.includes(type)) return
     let middlewares: UrlMatchMiddleware[] = []
     if (matchUrl) {
       middlewares = Object.keys(this.middleware)

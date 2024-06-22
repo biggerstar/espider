@@ -23,8 +23,8 @@ export abstract class SessionESpiderMiddleware extends SessionESpiderInterfaceMi
   public onClosed ?(this: SessionESpider): Promise<void> | void
 }
 
-export interface ESpiderUrlMatchMiddleware  {
-  onRequestTask?<T extends SpiderTask<Record<any, any>>>(this: SessionESpider, task: T, session: AxiosSessionInstance): Promise<void> | void
+export interface ESpiderRequestMiddleware {
+  onRequestTask?<T extends SpiderTask>(this: SessionESpider, task: T): Promise<void> | void
 
   onRequest?<T extends AxiosSessionRequestConfig>(this: SessionESpider, req: T, session: AxiosSessionInstance): Promise<T | void> | T | void
 

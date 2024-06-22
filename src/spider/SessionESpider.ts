@@ -130,7 +130,7 @@ export class SessionESpider
         taskId: fp,
         data: JSON.stringify(req),
         priority: options.priority || 0,
-        timestamp: Date.now(),
+        createTime: Date.now(),
       }
       const [_, created] = await this.requestQueueModel
         .findOrCreate({
