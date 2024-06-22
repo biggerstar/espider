@@ -26,9 +26,9 @@ export abstract class SessionESpiderMiddleware extends SessionESpiderInterfaceMi
 export interface ESpiderRequestMiddleware {
   onRequestTask?<T extends SpiderTask>(this: SessionESpider, task: T): Promise<void> | void
 
-  onRequest?<T extends AxiosSessionRequestConfig>(this: SessionESpider, req: T, session: AxiosSessionInstance): Promise<T | void> | T | void
+  onRequest?<T extends AxiosSessionRequestConfig>(this: SessionESpider, req: T): Promise<T | void> | T | void
 
-  onResponse?<T extends AxiosSessionRequestConfig, R extends AxiosSessionResponse>(this: SessionESpider, req: T, res: R, session: AxiosSessionInstance): Promise<void | R> | R | void
+  onResponse?<T extends AxiosSessionRequestConfig, R extends AxiosSessionResponse>(this: SessionESpider, req: T, res: R): Promise<void | R> | R | void
 
-  onError?<T extends AxiosSessionError>(this: SessionESpider, err: T, session: AxiosSessionInstance): Promise<void | T> | T | void
+  onError?<T extends AxiosSessionError>(this: SessionESpider, err: T): Promise<void | T> | T | void
 } 

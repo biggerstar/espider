@@ -6,6 +6,7 @@ import {
 } from "@biggerstar/axios-session";
 import {SpiderTask} from "@/typings";
 import {SessionESpider} from "@/spider";
+import {ESpiderRequestMiddleware} from "@/middleware";
 
 export class Test extends SessionESpider {
   public name = 'test'
@@ -69,13 +70,13 @@ export class Test extends SessionESpider {
     })
   }
 
-  '@baidu.com|weibo.com' = () => {
+  '@baidu.com|weibo.com'(): ESpiderRequestMiddleware {
     return {
       onRequestTask<T extends SpiderTask>(task: T): Promise<void> | void {
         console.log('onRequestTask')
         console.log(task)
       },
-      onRequest<T extends AxiosSessionRequestConfig>(req: T, session: AxiosSessionInstance): Promise<void | T> | void | T {
+      onRequest<T extends AxiosSessionRequestConfig>(req: T): Promise<void | T> | void | T {
         console.log('onRequest')
       },
       onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
