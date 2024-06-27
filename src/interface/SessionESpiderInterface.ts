@@ -1,4 +1,9 @@
-import {AxiosSessionInstance, AxiosSessionRequestConfig, createAxiosSession} from "@biggerstar/axios-session";
+import {
+  AxiosSessionInstance,
+  AxiosSessionRequestConfig,
+  AxiosSessionResponse,
+  createAxiosSession
+} from "@biggerstar/axios-session";
 import {interceptorsSpider} from "@/functions/interceptorsSpider";
 import {SessionESpiderInterfaceOptions, SessionItem} from "@/typings";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
@@ -15,7 +20,7 @@ export abstract class SessionESpiderInterface<
   private _listeningTimer: NodeJS.Timeout   // 轮询队列的时间周期
   declare public readonly options: Options & Record<any, any>
 
-  protected constructor() {
+  public constructor() {
     super();
     Object.assign(this.options, <SessionESpiderInterfaceOptions>{
       expirationSessionTime: null
@@ -47,7 +52,7 @@ export abstract class SessionESpiderInterface<
   /**
    * 移除当前的 session
    * */
-  public removeSession(session: string | AxiosSessionInstance) {
+  public removeSession(session: string | AxiosSessionInstance): void {
     const sessionId = typeof session === 'string' ? session : session.sessionId
     const foundIndex = this.sessionList
       .findIndex(item => item.session.sessionId === sessionId)
@@ -57,14 +62,14 @@ export abstract class SessionESpiderInterface<
   /**
    *  获取所有可用并且没在队列中等待的 session
    * */
-  public getAllAvailableSessions() {
+  public getAllAvailableSessions(): SessionItem[] {
     return this.sessionList.filter(session => !session.pending)
   }
 
   /**
    * 随机获取一个可用并且没在队列中等待的 session
    * */
-  public async getAvailableSession() {
+  public async getAvailableSession(): Promise<SessionItem> {
     const availableSessionList = this.getAllAvailableSessions()
     if (!availableSessionList.length) {
       return this._createNewSession()
@@ -77,14 +82,15 @@ export abstract class SessionESpiderInterface<
       throw new Error('当前的 session 列表超出并发数量，请检查是否在适当的地方使用 this.removeSession 移除没用的 session')
     }
     const session = createAxiosSession()
-    this.sessionList.push({
+    const sessionInfo = {
       pending: false,
       session,
       createTime: Date.now()
-    })
+    }
+    this.sessionList.push()
     interceptorsSpider(<any>this, session)
     await this.middlewareManager.callRoot('onCreateSession', async (cb) => await cb.call(this, session))
-    return session
+    return sessionInfo
   }
 
   /**
@@ -106,6 +112,7 @@ export abstract class SessionESpiderInterface<
     }
 
     const listening = () => {
+      if (!this._initialized) return
       clearInterval(this._listeningTimer)
       removeExpirationSession()
       addNewRequest()
@@ -116,11 +123,10 @@ export abstract class SessionESpiderInterface<
   /**
    * 进行请求，该操作不进入队列
    * */
-  async doRequest(req: AxiosSessionRequestConfig) {
-    const session = await this.getAvailableSession()
-    const sessionInfo = this.getSession(session.sessionId)
+  async doRequest(req: Partial<AxiosSessionRequestConfig>): Promise<AxiosSessionResponse> {
+    const sessionInfo = await this.getAvailableSession()
     sessionInfo.pending = true
-    const pendingRequest = session.request(req)
+    const pendingRequest = sessionInfo.session.request(req)
     pendingRequest.finally(() => {
       sessionInfo.pending = false
     })

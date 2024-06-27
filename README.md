@@ -1,18 +1,19 @@
-import {
-  AxiosSessionError,
-  AxiosSessionInstance,
-  AxiosSessionRequestConfig,
-  AxiosSessionResponse
-} from "@biggerstar/axios-session";
-import {SpiderTask} from "@/typings";
-import {SessionESpider} from "@/spider";
-import {ESpiderRequestMiddleware} from "@/middleware";
+## ESpider 爬虫框架
 
+支持中间件， 布隆过滤重复请求， 断点续爬， 数据库队列， session状态保持
+
+
+### 未来
+redis 分布式
+
+
+### 使用例子
+```ts
 export class Test extends SessionESpider {
   public name = 'test'
 
-  onReady() {
-    console.log('onReady')
+  onStart() {
+    console.log('onStart')
     spider.addRequestTask({
         url: 'https://baidu.com?q=11&b=222#accccc',
         method: 'POST',
@@ -34,38 +35,20 @@ export class Test extends SessionESpider {
       {
         priority: 2
       })
-    spider.addRequestTask({
-      url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
-      headers: {
-        'aaa': 'aaa2',
-        'ccc': 'ccc2',
-        'bbb': 'bbb2',
-      },
-      data: {
-        'datA-bbb': 'bbb1',
-        'datA-aaa': 'aaa1',
-        'data-ccc': 'ccc1',
-      }
-    })
-    spider.addRequestTask({
-      url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
-      headers: {
-        'aaa': 'aaa2',
-        'ccc': 'ccc2',
-        'bbb': 'bbb2',
-      },
-      data: {
-        'datA-bbb': 'bbb1',
-        'datA-aaa': 'aaa1',
-        'data-ccc': 'ccc1',
-      }
-    }, {
-      priority: 1
-    })
-  }
 
-  onStart(): Promise<void> | void {
-    console.log('onStart')
+    // spider.addRequestTask({
+    //   url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
+    //   headers: {
+    //     'aaa': 'aaa2',
+    //     'ccc': 'ccc2',
+    //     'bbb': 'bbb2',
+    //   },
+    //   data: {
+    //     'datA-bbb': 'bbb1',
+    //     'datA-aaa': 'aaa1',
+    //     'data-ccc': 'ccc1',
+    //   }
+    // })
   }
 
   onPause(): Promise<void> | void {
@@ -99,7 +82,7 @@ export class Test extends SessionESpider {
       },
       onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
         console.log('onResponse')
-        console.log('accurate response', res.data.slice(0, 500));
+        // console.log('accurate response', req, res.data.slice(0, 500));
         this.addToDatabaseQueue(() => {
           console.log('DatabaseQueue 回调')
         })
@@ -112,23 +95,15 @@ export class Test extends SessionESpider {
   }
 }
 
-const spider = new Test()
 spider
   .setOptions({
     requestConcurrency: 1,
-    dupeFilterOptions: {
-      // alwaysResetCache: true,
-    }
+    dupeFilterOptions: {}
   })
   .start()
   .then(() => console.log('启动成功'))
 
-setTimeout(() => {
-  spider.pause().then()
-}, 2000)
-setTimeout(() => {
-  spider.start().then()
-}, 5000)
-setTimeout(() => {
-  // spider.close().then()
-}, 8000)
+```
+
+
+

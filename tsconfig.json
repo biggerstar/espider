@@ -34,10 +34,6 @@
   "compileOnSave": false,
   "include": [
     "src",
-    "test",
-    "typings",
-    "index.ts",
-    "src/**/*"
   ],
   "exclude": [
     "dist",

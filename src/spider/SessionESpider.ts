@@ -1,12 +1,8 @@
-import {Sequelize} from "sequelize";
-import {Model, ModelStatic} from "sequelize/types/model";
 import {
   AddRequestTaskOptions,
   AddRequestTaskOtherOptions,
   SessionESpiderOptions
 } from "@/typings";
-import path from "node:path";
-import {createRequestDBCache} from "@/db/sequelize";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
 import {SessionESpiderMiddleware} from "@/middleware/SpiderMiddleware";
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
@@ -19,14 +15,6 @@ export class SessionESpider
   >
   implements SessionESpiderMiddleware {
 
-  protected _initialized: boolean;
-  public sequelize: Sequelize
-  private requestQueueModel: ModelStatic<Model>
-
-  public constructor() {
-    super()
-    this._initialized = false
-  }
 
   /**
    * 配置爬虫
@@ -53,11 +41,10 @@ export class SessionESpider
           let timer = setInterval(() => {
             const inTaskCont = this.dbQueue.pending + this.dbQueue.size
             if (inTaskCont <= 0) {
-              this.sequelize
+              this.taskManager.sequelize
                 .close()
                 .then(async () => {
                   await this.middlewareManager.callRoot('onClosed')
-                  console.log(11111111111111111111)
                   resolve(void 0)
                 })
                 .catch(reject)
@@ -86,23 +73,8 @@ export class SessionESpider
       throw new Error('[start] 您的爬虫已经关闭， 不能再次运行')
     }
     if (!['pause', 'ready'].includes(this._runStatus)) return
-    return new Promise(async (resolve, reject) => {
-      if (!this._initialized) {
-        if (!this.sequelize) {  // 如果没有手动定义 sequelize 连接，则使用内部默认
-          this.sequelize = new Sequelize({
-            dialect: 'sqlite',
-            storage: path.resolve(this.options.cacheDirPath, `${this.name}.request.sqlite3`),
-            logging: false
-          })
-        }
-        if (!this.requestQueueModel) {
-          this.requestQueueModel = await createRequestDBCache(this.sequelize, this.name)
-        }
-      }
-      this._initialized = true
-      await super.start()
-      resolve(void 0)
-    })
+    this._runStatus = 'running'
+    await super.start()
   }
 
   /**
@@ -117,57 +89,43 @@ export class SessionESpider
     if (!finallyReq.url) {
       throw new Error('[addRequestTask] 您添加的请求任务应该包含 url')
     }
-    if (!finallyReq.meta || !isObject(finallyReq.meta)) {
-      throw new Error('[addRequestTask] meta 应该是一个对象')
+    if (Object.hasOwn(finallyReq, 'meta') && (!finallyReq.meta || !isObject(finallyReq.meta))) {
+      throw new TypeError('[addRequestTask] meta 应该是一个对象')
     }
     const fp = this.fingerprint.get(finallyReq)
+    /* 这里可以通过 finallyReq 确定是否重复， 不需要考虑中间件是否修改了 req 中是否修改了一些字段 */
     if (this.fingerprint.hasFP(fp)) {
-      // console.log('请求指纹重复')
+      console.log('请求指纹重复', finallyReq.url)
       return
     }
-    this.dbQueue.add(async () => {
-      const taskData = {
-        taskId: fp,
-        data: JSON.stringify(req),
-        priority: options.priority || 0,
-        createTime: Date.now(),
-      }
-      const [_, created] = await this.requestQueueModel
-        .findOrCreate({
-          where: {taskId: fp},
-          defaults: taskData
-        })
-      if (!created) {
-        await this.requestQueueModel.update(taskData, {
-          where: {taskId: fp}
-        })
-      }
-    }).then()
+    const taskData = {
+      taskId: fp,
+      request: finallyReq,
+      priority: options.priority || 0,
+      createTime: Date.now(),
+    }
+    this.taskManager.addTask(taskData).then()
   }
 
   /**
    * 根据调度实现从数据库中取出所需个数的请求进行实现
    * */
-  public async autoLoadRequest(len: number) {
+  protected async autoLoadRequest(len: number) {
     // console.log('当前所需请求数量', len)
-    const foundTaskList = await this.requestQueueModel
-      .findAll({
-        limit: len,
-        order: [['priority', 'ASC']]
-      })
-    foundTaskList.forEach(dbRes => {
-      const task = dbRes.dataValues
-      if (!task.meta) task.meta = {}
-      let requestConfig = JSON.parse(task.data)
+    const taskList = await this.taskManager.getTask(len)
+    taskList.forEach((task) => {
       this.requestQueue.add(async () => {
         await this.middlewareManager.call(
           'onRequestTask',
-          requestConfig.url,
+          task.request.url,
           async (cb) => {
             await cb.call(this, task)
           })
-        await this.doRequest(requestConfig).finally(async () => {
-        })
+        await this.doRequest(task.request)
+          .then((_) => {
+            this.fingerprint.add(task.request)
+            this.taskManager.removePendingTask(task.taskId)
+          })
       })
     })
   }

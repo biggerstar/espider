@@ -4,6 +4,7 @@ import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
 import {MiddlewareManager} from "@/middleware/MiddlewareManager";
 import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middleware";
 import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
+import {TaskManager} from "@/task/TaskManager";
 
 
 export abstract class BaseESpiderInterface<
@@ -16,14 +17,15 @@ export abstract class BaseESpiderInterface<
 
   public declare name: string
   public readonly options: Options & Record<any, any>
-  protected abstract _initialized: boolean
   public readonly requestQueue: PQueue
   public readonly dbQueue: PQueue
   public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderRequestMiddleware>
   public readonly fingerprint: RequestDupeFilter
+  public readonly taskManager: TaskManager
   protected _runStatus: 'pause' | 'ready' | 'closed' | 'running'
   /** 用于保持爬虫实例的运行，只有当程序关闭的时候才会释放 */
   private _keepProcessTimer: number
+  protected _initialized: boolean;
 
   protected constructor() {
     super();
@@ -31,6 +33,7 @@ export abstract class BaseESpiderInterface<
     this.requestQueue = new PQueue({
       interval: 0
     })
+    this._initialized = false
     this._runStatus = 'ready'
     this.dbQueue = new PQueue()
     this.middlewareManager = new MiddlewareManager(this)
@@ -45,6 +48,7 @@ export abstract class BaseESpiderInterface<
       requestConcurrency: 1,
       requestInterval: 0,
     })
+    this.taskManager = new TaskManager()
     this.fingerprint = new RequestDupeFilter()
     const oldAdd = this.requestQueue.add
     this.requestQueue.add = async function () {  // 重写add 函数进行支持请求间隔
@@ -53,12 +57,12 @@ export abstract class BaseESpiderInterface<
       return res
     }
     /*---------------------提取主爬虫事件钩子------------------------*/
-    // 这里是可以直接使用 Promise 的，因为启动也是 Promise， 不会影响正常运行
+    const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
+    /* 主蜘蛛中间件 */
+    this.middlewareManager.addRootMiddleware(<any>this)
     Promise.resolve().then(() => {
-      /* 主蜘蛛中间件 */
-      this.middlewareManager.addRootMiddleware(<any>this)
+      // 这里是可以直接使用 Promise 的，因为启动也是 Promise， 不会影响正常运行
       /* 定义到原型的地址匹配中间件 */
-      const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
       Object.keys(descriptors)
         .filter(keyName => keyName.startsWith('@') && isFunction(this[keyName]))
         .forEach(name => this.middlewareManager.addMiddleware(name.slice(1), this[name]()))
@@ -76,6 +80,11 @@ export abstract class BaseESpiderInterface<
     if (isNumber(opt.requestConcurrency)) this.requestQueue.concurrency = opt.requestConcurrency
     if (isNumber(opt.dbQueueTimeout)) this.dbQueue.timeout = opt.dbQueueTimeout
     if (isNumber(opt.requestQueueTimeout)) this.requestQueue.timeout = opt.requestQueueTimeout
+    this.fingerprint.setOptions({
+      ...opt,
+      ...opt.dupeFilterOptions
+    })
+    this.taskManager.setOptions(opt)
   }
 
   /**
@@ -113,17 +122,17 @@ export abstract class BaseESpiderInterface<
         }
       }, 3000)
     }
-    this.options.name = this.name
-    this.setOptions(this.options)
-    this.fingerprint.setOptions({
-      name: this.options.name || this.name,
-      cacheDirPath: this.options.cacheDirPath,
-      ...this.options.dupeFilterOptions,
-    })
-    this.fingerprint.start()
-    this.requestQueue.start()
-    this.dbQueue.start()
+    if (!this._initialized) {
+      this.options.name = this.name
+      this.setOptions(this.options)
+      this.fingerprint.start()
+      this.requestQueue.start()
+      this.dbQueue.start()
+      await this.taskManager.init()
+      await this.middlewareManager.callRoot('onReady')
+    }
     await this.middlewareManager.callRoot('onStart')
+    this._initialized = true
   }
 
   /**

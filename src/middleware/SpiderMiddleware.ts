@@ -13,6 +13,8 @@ export abstract class BaseESpiderInterfaceMiddleware {
   public onPause ?(this: SessionESpider): Promise<void> | void
 
   public onClose ?(this: SessionESpider): Promise<void> | void
+  
+  public onReady ?(this: SessionESpider): Promise<void> | void
 }
 
 export abstract class SessionESpiderInterfaceMiddleware extends BaseESpiderInterfaceMiddleware {

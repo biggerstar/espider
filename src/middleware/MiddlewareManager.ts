@@ -1,8 +1,9 @@
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
 import {BaseESpiderInterfaceOptions} from "@/typings";
-import {isFunction} from "@biggerstar/tools";
+import {isFunction, isObject} from "@biggerstar/tools";
 
 const rootMiddlewareEvent = [
+  'onReady',
   'onStart',
   'onPause',
   'onClose',
@@ -19,7 +20,7 @@ const requestMiddlewareEvent = [
 
 export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddleware extends unknown> {
   public spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, RootMiddleware>
-  public middleware: Record<string, UrlMatchMiddleware> = {}
+  public middleware: Record<string, UrlMatchMiddleware>
   public rootRootMiddleware: RootMiddleware
   public rootMiddlewareEvent: Array<keyof RootMiddleware | string>
   public requestMiddlewareEvent: Array<keyof UrlMatchMiddleware | string>
@@ -28,6 +29,8 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
     this.spider = spider
     this.rootMiddlewareEvent = rootMiddlewareEvent
     this.requestMiddlewareEvent = requestMiddlewareEvent
+    this.middleware = {}
+    this.rootRootMiddleware = {} as any
   }
 
   /**
@@ -41,6 +44,9 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
    * 添加请求中间件
    * */
   public addMiddleware(name: string, middleware: UrlMatchMiddleware) {
+    if (name.startsWith('@')) {
+      throw new Error('请求中间件的名字第一个字符不应该是 @ ')
+    }
     this.middleware[name] = middleware
   }
 

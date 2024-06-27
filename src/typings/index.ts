@@ -82,6 +82,18 @@ export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpider
   requestQueueModel: ModelStatic<Model>
 }
 
+export type TaskManagerOptions = {
+  name: string
+  cacheDirPath: string
+}
+
+export type TaskData = {
+  taskId: string,
+  request: Partial<AxiosSessionRequestConfig>,
+  priority: number,
+  createTime: number,
+}
+
 export type AddRequestTaskAllowField = 'meta' | 'method' | 'url' | 'data' | 'headers'
 export type AddRequestTaskOptions = Pick<AxiosSessionRequestConfig, AddRequestTaskAllowField>
 export type BaseSpiderEventNames = keyof BaseESpiderInterfaceMiddleware
@@ -120,7 +132,7 @@ export type DupeFilterOptions = {
    * 每次启动清空去重过滤缓存
    * @default false
    * */
-  requestFilterReset: boolean
+  alwaysResetCache: boolean
 
   /**
    * 布隆基础过滤器 ( bloom-filters ) 的哈希函数的个数

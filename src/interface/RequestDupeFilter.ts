@@ -9,7 +9,7 @@ import {clearPromiseInterval, everyHasKeys, setPromiseInterval} from "@biggersta
 export class RequestDupeFilter {
   public name: string
   public cacheDirPath: string
-  public requestFilterReset: boolean
+  public alwaysResetCache: boolean
   public hashes: number
   public supportRequestSize: number
   public dupeFilterCacheFilePath: string
@@ -27,7 +27,7 @@ export class RequestDupeFilter {
     this.hashes = 2
     this.dupePersistenceInterval = 6.18 * 1000
     this.enableDupeFilter = true
-    this.requestFilterReset = false
+    this.alwaysResetCache = false
     this.runtimeFilterHash = []
     this.filterRule = this._filterRule
   }
@@ -39,7 +39,7 @@ export class RequestDupeFilter {
     const whiteList: Array<keyof DupeFilterOptions> = [
       'name',
       'cacheDirPath',
-      'requestFilterReset',
+      'alwaysResetCache',
       'hashes',
       'supportRequestSize',
       'dupeFilterCacheFilePath',
@@ -62,15 +62,24 @@ export class RequestDupeFilter {
     this.dupeFilterCacheFilePath = path.resolve(this.cacheDirPath, `${this.name}.request.filter`)
     if (!this.filter) {
       const existsFilterCache = fs.existsSync(this.dupeFilterCacheFilePath)
-      if (this.requestFilterReset || !existsFilterCache) {
+      const createCache = () => {
+        if (existsFilterCache) {
+          fs.renameSync(this.dupeFilterCacheFilePath, `${this.dupeFilterCacheFilePath}.bak`)
+        }
         this.filter = new pkg.BloomFilter(this.supportRequestSize, this.hashes)
         this._persistence()
-      } else if (existsFilterCache) {
+      }
+      if (this.alwaysResetCache || !existsFilterCache) createCache()
+      else if (existsFilterCache) {
         const recordFilterContent = fs.readFileSync(this.dupeFilterCacheFilePath, 'utf8')
-        try {
-          this.filter = pkg.BloomFilter.fromJSON(JSON.parse(recordFilterContent))
-        } catch (e) {
-          throw new Error(`${this.dupeFilterCacheFilePath} 去重缓存已损坏.  ${e.message}`)
+        if (!recordFilterContent.trim()) createCache()
+        else {
+          try {
+            this.filter = pkg.BloomFilter.fromJSON(JSON.parse(recordFilterContent))
+          } catch (e) {
+            const errMsg = `${this.dupeFilterCacheFilePath} 去重缓存已损坏.  ${e.message}`
+            throw new Error(errMsg)
+          }
         }
       }
     }

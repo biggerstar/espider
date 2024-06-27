@@ -3,6 +3,19 @@ import {defineViteRunConfig, viteRunLogPlugin, ViteRunHandleFunctionOptions} fro
 import dtsPlugin from "vite-plugin-dts";
 import copyDtsPlugin from "vite-plugin-copy-dts";
 
+const external = [
+  'node:fs',
+  'node:path',
+  'path',
+  'fs',
+  'sequelize',
+  '@biggerstar/axios-session',
+  '@biggerstar/tools',
+  'sqlite3',
+  'cheerio',
+  'bloom-filters',
+  'redis',
+]
 export default defineViteRunConfig({
   baseConfig: getBaseConfig,
   packages: [
@@ -87,6 +100,7 @@ function getBaseConfig(options: ViteRunHandleFunctionOptions) {
       emptyOutDir: true,
       minify: false,
       rollupOptions: {
+        external: external,
         output: {
           sourcemap: false,
           globals: {}
@@ -96,7 +110,7 @@ function getBaseConfig(options: ViteRunHandleFunctionOptions) {
     },
     plugins: [
       dtsPlugin({
-        // rollupTypes: true,
+        rollupTypes: true,
         copyDtsFiles: true,
         clearPureImport: true
       }),

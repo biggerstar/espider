@@ -1,18 +1,19 @@
 {
   "name": "espider",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.1-beta",
   "scripts": {
     "dev": "vite-run dev -y",
     "build": "vite-run build -y",
-    "test": "tsx test/Test.ts"
+    "test": "tsx test/Test.ts",
+    "publish:npm": "npm run build && npm publish"
   },
   "dependencies": {
     "@biggerstar/axios-session": "^0.3.10",
     "@biggerstar/tools": "^0.0.15",
+    "axios": "^1.7.2",
     "bloom-filters": "^3.0.2",
     "cheerio": "1.0.0-rc.12",
-    "debug": "^4.3.4",
     "md5": "^2.3.0",
     "p-queue": "^8.0.1",
     "redis": "^4.6.14",
@@ -27,5 +28,9 @@
     "vite-plugin-copy-dts": "^0.0.6",
     "vite-plugin-dts": "^3.9.1",
     "vite-run": "^1.7.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
