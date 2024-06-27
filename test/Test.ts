@@ -63,10 +63,25 @@ export class Test extends SessionESpider {
     }, {
       priority: 1
     })
-
+    const isSuccess1 = spider.addRequestTask({
+      url: 'https://baidu.com/aaaa?b=222&q=11#accccc',
+      headers: {
+        'aaa': 'aaa2',
+        'ccc': 'ccc2',
+        'bbb': 'bbb2',
+      },
+      data: {
+        'datA-bbb': 'bbb1',
+        'datA-aaa': 'aaa1',
+        'data-ccc': 'ccc1',
+      }
+    }, {
+      priority: 1
+    })
+    console.log(isSuccess1)
     for (let i = 0; i < 3000; i++) {
-      console.log(i)
-      spider.addRequestTask({
+      if (i % 200 === 0) console.log(i)
+      const isSuccess = spider.addRequestTask({
         url: `https://baidu.com/q=${i}`,
         headers: {
           'aaa': 'aaa2',
@@ -79,6 +94,7 @@ export class Test extends SessionESpider {
           'data-ccc': 'ccc1',
         }
       })
+      console.log(isSuccess)
     }
 
     // await sleep(2500)
@@ -155,7 +171,7 @@ spider
   .setOptions({
     requestConcurrency: 1,
     dupeFilterOptions: {
-      alwaysResetCache: true,
+      // alwaysResetCache: true,
     },
     requestInterval: 5000,
     taskOptions: {}

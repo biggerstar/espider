@@ -77,7 +77,7 @@ export class RequestDupeFilter {
           try {
             this.filter = pkg.BloomFilter.fromJSON(JSON.parse(recordFilterContent))
           } catch (e) {
-            const errMsg = `${this.dupeFilterCacheFilePath} 去重缓存已损坏.  ${e.message}`
+            const errMsg = `${this.dupeFilterCacheFilePath} 布隆去重缓存已损坏.  ${e.message}`
             throw new Error(errMsg)
           }
         }
@@ -157,7 +157,9 @@ export class RequestDupeFilter {
    * 添加来自 请求对象的 指纹
    * */
   public add(req: Partial<AxiosSessionRequestConfig>): void {
-    this.addFP(this.get(req))
+    const fp = this.get(req)
+    this.addPersistenceFP(fp)
+    this.addRuntimeFP(fp)
   }
 
   /**
@@ -168,9 +170,16 @@ export class RequestDupeFilter {
   }
 
   /**
-   * 添加当前指纹
+   * 添加当前运行时指纹
    * */
-  public addFP(fp: string) {
+  public addPersistenceFP(fp: string) {
+    this.filter.add(fp)
+  }
+
+  /**
+   * 添加当前运行时指纹
+   * */
+  public addRuntimeFP(fp: string) {
     this.runtimeFilter.add(fp)
     this.runtimeFilterHash.push(fp)
   }

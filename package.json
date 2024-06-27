@@ -1,7 +1,7 @@
 {
   "name": "espider",
   "type": "module",
-  "version": "0.2.8",
+  "version": "0.2.12",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

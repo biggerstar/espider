@@ -13,6 +13,7 @@ export class SessionESpider
   constructor() {
     super();
   }
+
   /**
    * 配置爬虫
    * */
@@ -37,10 +38,10 @@ export class SessionESpider
    * 添加任务到本地数据库队列中，支持断点续爬
    * meta字段应该是个可序列化为字符串的普通对象
    * */
-  public addRequestTask<T extends Partial<AxiosSessionRequestConfig>, R extends any>(
+  public addRequestTask<T extends Partial<AxiosSessionRequestConfig>>(
     req: T | string,
     options: Partial<AddRequestTaskOtherOptions> = {}
-  ): R | void {
+  ): boolean {
     let finallyReq: Partial<AddRequestTaskOptions> = typeof req === 'string' ? {url: req} : req
     if (!finallyReq.url) {
       throw new Error('[addRequestTask] 您添加的请求任务应该包含 url')
@@ -49,11 +50,14 @@ export class SessionESpider
       throw new TypeError('[addRequestTask] meta 应该是一个对象')
     }
     const fp = this.fingerprint.get(finallyReq)
-    /* 这里可以通过 finallyReq 确定是否重复， 不需要考虑中间件是否修改了 req 中是否修改了一些字段 */
+    /* 这里可以直接通过 finallyReq 确定是否重复， 不需要考虑中间件是否修改了 req 中是否修改了一些字段 */
     if (this.fingerprint.hasFP(fp)) {
-      console.log('请求指纹重复', finallyReq.url)
-      return
+      // console.log('请求指纹重复', finallyReq.url)
+      return false
+    } else {
+      this.fingerprint.addRuntimeFP(fp)
     }
+
     const taskData = {
       taskId: fp,
       request: finallyReq,
@@ -61,5 +65,6 @@ export class SessionESpider
       createTime: Date.now(),
     }
     this.taskManager.addTask(taskData).then()
+    return true
   }
 }
