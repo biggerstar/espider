@@ -100,7 +100,7 @@ export abstract class SessionESpiderInterface<
     const removeExpirationSession = () => {
       this.sessionList = this.sessionList
         .filter(item => {
-          if (this.options.expirationSessionTime === null) return true
+          if ([null, void 0].includes(this.options.expirationSessionTime)) return true
           return (Date.now() - item.createTime) < this.options.expirationSessionTime
         })
     }
@@ -113,7 +113,6 @@ export abstract class SessionESpiderInterface<
 
     const listening = () => {
       if (!this._initialized) return
-      clearInterval(this._listeningTimer)
       removeExpirationSession()
       addNewRequest()
     }
@@ -123,7 +122,7 @@ export abstract class SessionESpiderInterface<
   /**
    * 进行请求，该操作不进入队列
    * */
-  async doRequest(req: Partial<AxiosSessionRequestConfig>): Promise<AxiosSessionResponse> {
+  public async doRequest(req: Partial<AxiosSessionRequestConfig>): Promise<AxiosSessionResponse> {
     const sessionInfo = await this.getAvailableSession()
     sessionInfo.pending = true
     const pendingRequest = sessionInfo.session.request(req)
@@ -131,14 +130,5 @@ export abstract class SessionESpiderInterface<
       sessionInfo.pending = false
     })
     return pendingRequest
-  }
-
-  /**
-   * 根据调度在子类实现新任务的自动添加
-   * len 为当前可添加的任务个数
-   * 该函数需要从数据库中取出一个或者多个任务，并添加到请求任务队列
-   * */
-  protected async autoLoadRequest(_: number) {
-    throw new Error('请实现 autoLoadRequest 函数')
   }
 }

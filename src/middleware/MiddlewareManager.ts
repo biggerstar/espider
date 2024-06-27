@@ -9,6 +9,7 @@ const rootMiddlewareEvent = [
   'onClose',
   'onClosed',
   'onCreateSession',
+  'onIdle',
 ]
 
 const requestMiddlewareEvent = [
@@ -80,6 +81,7 @@ export class MiddlewareManager<RootMiddleware extends unknown, UrlMatchMiddlewar
   public async callRoot(type: keyof RootMiddleware, callback?: (cb: Function) => Promise<any>) {
     if (!this.rootMiddlewareEvent.includes(type)) return
     const cb = this.rootRootMiddleware[type]
+    // console.log(type, cb)
     if (!isFunction(cb)) return
     if (callback) await callback(cb.bind(this.spider))
     else await cb.call(this.spider)

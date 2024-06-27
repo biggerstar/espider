@@ -2,8 +2,8 @@ import {createRequestDBCache} from "@/db/sequelize";
 import {Model, ModelStatic} from "sequelize/lib/model";
 import {Sequelize} from "sequelize";
 import path from "node:path";
-import {TaskData, TaskManagerOptions} from "@/typings";
-import {isString, sleep} from "@biggerstar/tools";
+import {DupeFilterOptions, TaskData, TaskManagerOptions} from "@/typings";
+import {everyHasKeys, isString, sleep} from "@biggerstar/tools";
 import PQueue from "p-queue";
 import * as process from "process";
 
@@ -17,15 +17,12 @@ export class TaskManager {
   public sequelize: Sequelize
   public requestModel: ModelStatic<Model>
   public pendingModel: ModelStatic<Model>
-  private readonly options: TaskManagerOptions
   public historicalTasks: TaskData[]
   public queue: PQueue
+  public name: string
+  public cacheDirPath: string
 
   constructor() {
-    this.options = {
-      cacheDirPath: '',
-      name: ''
-    }
     this.queue = new PQueue({concurrency: 1})
     this.historicalTasks = []
   }
@@ -34,12 +31,12 @@ export class TaskManager {
     if (!this.sequelize) {  // 如果没有手动定义 sequelize 连接，则使用内部默认
       this.sequelize = new Sequelize({
         dialect: 'sqlite',
-        storage: path.resolve(this.options.cacheDirPath, `${this.options.name}.request.sqlite3`),
+        storage: path.resolve(this.cacheDirPath, `${this.name}.request.sqlite3`),
         logging: false
       })
     }
     if (!this.requestModel || !this.pendingModel) {
-      const models = await createRequestDBCache(this.sequelize, this.options.name)
+      const models = await createRequestDBCache(this.sequelize, this.name)
       if (!this.requestModel) this.requestModel = models.requests
       if (!this.pendingModel) this.pendingModel = models.pending
     }
@@ -52,7 +49,14 @@ export class TaskManager {
   }
 
   public setOptions(opt: Partial<TaskManagerOptions> = {}): this {
-    Object.assign(this.options, opt)
+    const whiteList: Array<keyof TaskManagerOptions> = [
+      'name',
+      'cacheDirPath',
+      'sequelize',
+      'requestModel',
+      'pendingModel',
+    ]
+    whiteList.forEach((name: any) => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
     return this
   }
 

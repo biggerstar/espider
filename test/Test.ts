@@ -80,6 +80,10 @@ export class Test extends SessionESpider {
     console.log('onClosed')
   }
 
+  onIdle(): Promise<void> | void {
+    console.log('onIdle')
+  }
+
   onCreateSession(session: AxiosSessionInstance): Promise<void> | void {
     // console.log('onCreateSession', session)
     session.setAxiosDefaults({
@@ -118,7 +122,8 @@ spider
     requestConcurrency: 1,
     dupeFilterOptions: {
       // alwaysResetCache: true,
-    }
+    },
+    taskOptions: {}
   })
   .start()
   .then(() => console.log('启动成功'))

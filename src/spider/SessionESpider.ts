@@ -21,8 +21,6 @@ export class SessionESpider
    * */
   public setOptions(opt: Partial<SessionESpiderOptions> = {}): this {
     super.setOptions(opt)
-    const whiteList: Array<keyof SessionESpiderOptions> = ['requestQueueModel', 'sequelize']
-    whiteList.forEach(name => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
     return this
   }
 
@@ -107,26 +105,5 @@ export class SessionESpider
     this.taskManager.addTask(taskData).then()
   }
 
-  /**
-   * 根据调度实现从数据库中取出所需个数的请求进行实现
-   * */
-  protected async autoLoadRequest(len: number) {
-    // console.log('当前所需请求数量', len)
-    const taskList = await this.taskManager.getTask(len)
-    taskList.forEach((task) => {
-      this.requestQueue.add(async () => {
-        await this.middlewareManager.call(
-          'onRequestTask',
-          task.request.url,
-          async (cb) => {
-            await cb.call(this, task)
-          })
-        await this.doRequest(task.request)
-          .then((_) => {
-            this.fingerprint.add(task.request)
-            this.taskManager.removePendingTask(task.taskId)
-          })
-      })
-    })
-  }
+ 
 }

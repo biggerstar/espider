@@ -8,13 +8,15 @@ import {SpiderTask} from "@/typings";
 import {SessionESpider} from "@/spider/SessionESpider";
 
 export abstract class BaseESpiderInterfaceMiddleware {
-  public onStart ?(this: SessionESpider): Promise<void> | void
+  public onStart?(this: SessionESpider): Promise<void> | void
 
-  public onPause ?(this: SessionESpider): Promise<void> | void
+  public onPause?(this: SessionESpider): Promise<void> | void
 
-  public onClose ?(this: SessionESpider): Promise<void> | void
+  public onClose?(this: SessionESpider): Promise<void> | void
   
-  public onReady ?(this: SessionESpider): Promise<void> | void
+  public onReady?(this: SessionESpider): Promise<void> | void
+  
+  public onIdle?(this: SessionESpider): Promise<void> | void
 }
 
 export abstract class SessionESpiderInterfaceMiddleware extends BaseESpiderInterfaceMiddleware {

@@ -43,6 +43,8 @@ export type BaseESpiderInterfaceOptions = {
    * 请求去重选项配置
    * */
   dupeFilterOptions: Partial<DupeFilterOptions>
+  /** 任务管理器配置选项 */
+  taskOptions: Partial<TaskManagerOptions>
   /**
    * 缓存目录
    * */
@@ -58,7 +60,13 @@ export type SessionESpiderInterfaceOptions = BaseESpiderInterfaceOptions & {
   expirationSessionTime: number | null
 }
 
-export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpiderInterfaceOptions & {
+export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpiderInterfaceOptions
+
+export type TaskManagerOptions = {
+  /** 爬虫名称，从主蜘蛛名称同步过来的 */
+  name: string
+  /** 缓存地址，可以单独指定，默认使用 BaseESpiderInterfaceOptions 类型中 cacheDirPath 的缓存地址 */
+  cacheDirPath: string
   /**
    * 当前使用的 sequelize 任务队列连接实例，可以自定义远程数据库
    * 您可以使用 mysql 或者其他数据库
@@ -76,15 +84,10 @@ export type SessionESpiderOptions = BaseESpiderInterfaceOptions & SessionESpider
    *
    * */
   sequelize: Sequelize
-  /**
-   * 请求队列的 sequelize 实例
-   * */
-  requestQueueModel: ModelStatic<Model>
-}
-
-export type TaskManagerOptions = {
-  name: string
-  cacheDirPath: string
+  /** 控制所有请求数据库表缓存的 sequelize 模型 */
+  requestModel: ModelStatic<Model>
+  /** 控制正在请求数据库表的 sequelize 模型 */
+  pendingModel: ModelStatic<Model>
 }
 
 export type TaskData = {

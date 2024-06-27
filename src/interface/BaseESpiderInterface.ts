@@ -5,6 +5,7 @@ import {MiddlewareManager} from "@/middleware/MiddlewareManager";
 import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middleware";
 import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
 import {TaskManager} from "@/task/TaskManager";
+import {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
 
 
 export abstract class BaseESpiderInterface<
@@ -26,6 +27,8 @@ export abstract class BaseESpiderInterface<
   /** 用于保持爬虫实例的运行，只有当程序关闭的时候才会释放 */
   private _keepProcessTimer: number
   protected _initialized: boolean;
+
+  public abstract doRequest(req: any): Promise<any>
 
   protected constructor() {
     super();
@@ -84,7 +87,10 @@ export abstract class BaseESpiderInterface<
       ...opt,
       ...opt.dupeFilterOptions
     })
-    this.taskManager.setOptions(opt)
+    this.taskManager.setOptions({
+      ...opt,
+      ...opt.taskOptions
+    })
   }
 
   /**
@@ -143,6 +149,35 @@ export abstract class BaseESpiderInterface<
       throw new Error(`[addToDatabaseQueue] 入参应该是一个函数`)
     }
     this.dbQueue.add(() => callback.call(this)).then()
+  }
+
+  /**
+   * 根据调度实现从数据库中取出所需个数的请求进行实现
+   * len 为当前可添加的任务个数
+   * 该函数需要从数据库中取出一个或者多个任务，并添加到请求任务队列
+   * */
+  protected async autoLoadRequest(len: number) {
+    // console.log('当前所需请求数量', len)
+    const taskList = await this.taskManager.getTask(len)
+    if (taskList.length === 0) {
+      await this.middlewareManager.callRoot('onIdle')
+      return
+    }
+    taskList.forEach((task) => {
+      this.requestQueue.add(async () => {
+        await this.middlewareManager.call(
+          'onRequestTask',
+          task.request.url,
+          async (cb) => {
+            await cb.call(this, task)
+          })
+        await this.doRequest(task.request)
+          .then((_) => {
+            this.fingerprint.add(task.request)
+            this.taskManager.removePendingTask(task.taskId)
+          })
+      })
+    })
   }
 }
 
