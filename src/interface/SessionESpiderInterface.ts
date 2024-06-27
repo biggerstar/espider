@@ -27,19 +27,25 @@ export abstract class SessionESpiderInterface<
     })
   }
 
-  public async pause(): Promise<void> {
-    clearInterval(this._listeningTimer)
-    await super.pause();
+  public async pause(): Promise<boolean> {
+    return await super.pause().then(isSuccess => {
+      clearInterval(this._listeningTimer)
+      return isSuccess
+    })
   }
 
-  public async close(): Promise<void> {
-    clearInterval(this._listeningTimer)
-    await super.close();
+  public async close(): Promise<boolean> {
+    return await super.close().then(isSuccess => {
+      clearInterval(this._listeningTimer)
+      return isSuccess
+    })
   }
 
-  public async start(): Promise<void> {
-    this._startListening()
-    await super.start();
+  public async start(): Promise<boolean> {
+    return await super.start().then(isSuccess => {
+      this._startListening()
+      return isSuccess
+    })
   }
 
   /**
@@ -116,6 +122,7 @@ export abstract class SessionESpiderInterface<
       removeExpirationSession()
       addNewRequest()
     }
+    if (this._listeningTimer) clearInterval(this._listeningTimer)
     this._listeningTimer = setInterval(() => listening(), Math.min(500, this.options.queueCheckInterval))
   }
 

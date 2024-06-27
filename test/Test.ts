@@ -7,11 +7,12 @@ import {
 import {SpiderTask} from "@/typings";
 import {SessionESpider} from "@/spider";
 import {ESpiderRequestMiddleware} from "@/middleware";
+import {sleep} from "@biggerstar/tools";
 
 export class Test extends SessionESpider {
   public name = 'test'
 
-  onReady() {
+  async onReady() {
     console.log('onReady')
     spider.addRequestTask({
         url: 'https://baidu.com?q=11&b=222#accccc',
@@ -62,22 +63,37 @@ export class Test extends SessionESpider {
     }, {
       priority: 1
     })
+    // await sleep(2500)
   }
 
-  onStart(): Promise<void> | void {
+  async onStart(): Promise<void> {
     console.log('onStart')
+    // await sleep(2500)
   }
 
-  onPause(): Promise<void> | void {
+  async onStarted(): Promise<void> {
+    console.log('onStarted')
+    // await sleep(2500)
+  }
+
+  async onPause(): Promise<void> {
     console.log('onPause')
+    // await sleep(2500)
   }
 
-  onClose(): Promise<void> | void {
+  async onPaused(): Promise<void> {
+    console.log('onPaused')
+    // await sleep(2500)
+  }
+
+  async onClose(): Promise<void> {
     console.log('onClose')
+    // await sleep(2500)
   }
 
-  onClosed(): Promise<void> | void {
+  async onClosed(): Promise<void> {
     console.log('onClosed')
+    // await sleep(2500)
   }
 
   onIdle(): Promise<void> | void {
@@ -119,9 +135,9 @@ export class Test extends SessionESpider {
 const spider = new Test()
 spider
   .setOptions({
-    requestConcurrency: 1,
+    requestConcurrency: 2,
     dupeFilterOptions: {
-      // alwaysResetCache: true,
+      alwaysResetCache: true,
     },
     taskOptions: {}
   })
@@ -129,11 +145,11 @@ spider
   .then(() => console.log('启动成功'))
 
 setTimeout(() => {
-  spider.pause().then()
+  spider.pause().then(isSuccess => console.log('pause', isSuccess))
 }, 2000)
 setTimeout(() => {
-  spider.start().then()
-}, 5000)
-setTimeout(() => {
-  // spider.close().then()
+  spider.start().then(isSuccess => console.log('start', isSuccess))
 }, 8000)
+setTimeout(() => {
+  spider.close().then(isSuccess => console.log('close', isSuccess))
+}, 10000)

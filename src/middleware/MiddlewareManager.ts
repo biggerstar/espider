@@ -5,7 +5,9 @@ import {isFunction, isObject} from "@biggerstar/tools";
 const rootMiddlewareEvent = [
   'onReady',
   'onStart',
+  'onStarted',
   'onPause',
+  'onPaused',
   'onClose',
   'onClosed',
   'onCreateSession',

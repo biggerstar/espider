@@ -15,11 +15,6 @@ export type BaseESpiderInterfaceOptions = {
    * */
   dbQueueTimeout: number
   /**
-   * 数据库队列并发数
-   * @default 1
-   * */
-  dbQueueConcurrency: number
-  /**
    * 请求队列超时时间,单位毫秒
    * @default 12000
    * */

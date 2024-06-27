@@ -6,6 +6,7 @@ import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middle
 import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
 import {TaskManager} from "@/task/TaskManager";
 import {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
+import {resolve} from "node:path";
 
 
 export abstract class BaseESpiderInterface<
@@ -20,6 +21,7 @@ export abstract class BaseESpiderInterface<
   public readonly options: Options & Record<any, any>
   public readonly requestQueue: PQueue
   public readonly dbQueue: PQueue
+  protected readonly _taskQueue: PQueue
   public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderRequestMiddleware>
   public readonly fingerprint: RequestDupeFilter
   public readonly taskManager: TaskManager
@@ -27,6 +29,7 @@ export abstract class BaseESpiderInterface<
   /** 用于保持爬虫实例的运行，只有当程序关闭的时候才会释放 */
   private _keepProcessTimer: number
   protected _initialized: boolean;
+  private _onIdleBlock: boolean
 
   public abstract doRequest(req: any): Promise<any>
 
@@ -37,8 +40,10 @@ export abstract class BaseESpiderInterface<
       interval: 0
     })
     this._initialized = false
+    this._onIdleBlock = false
     this._runStatus = 'ready'
-    this.dbQueue = new PQueue()
+    this.dbQueue = new PQueue({concurrency: 1})
+    this._taskQueue = new PQueue({concurrency: 1})
     this.middlewareManager = new MiddlewareManager(this)
     this.options = {} as any
     Object.assign(this.options, <BaseESpiderInterfaceOptions>{
@@ -47,7 +52,6 @@ export abstract class BaseESpiderInterface<
       queueCheckInterval: 500,
       dbQueueTimeout: 12000,
       requestQueueTimeout: 12000,
-      dbQueueConcurrency: 1,
       requestConcurrency: 1,
       requestInterval: 0,
     })
@@ -77,9 +81,8 @@ export abstract class BaseESpiderInterface<
     })
   }
 
-  public setOptions(opt: Partial<BaseESpiderInterfaceOptions>) {
+  public setOptions(opt: Partial<BaseESpiderInterfaceOptions>): this {
     Object.assign(this.options, opt)
-    if (isNumber(opt.dbQueueConcurrency)) this.dbQueue.concurrency = opt.dbQueueConcurrency
     if (isNumber(opt.requestConcurrency)) this.requestQueue.concurrency = opt.requestConcurrency
     if (isNumber(opt.dbQueueTimeout)) this.dbQueue.timeout = opt.dbQueueTimeout
     if (isNumber(opt.requestQueueTimeout)) this.requestQueue.timeout = opt.requestQueueTimeout
@@ -91,54 +94,111 @@ export abstract class BaseESpiderInterface<
       ...opt,
       ...opt.taskOptions
     })
+    return this
   }
 
   /**
    * 关闭爬虫
    * */
-  public async close(): Promise<void> {
-    clearPromiseInterval(this._keepProcessTimer)
-    this.fingerprint.closeAutoPersistence()
-    this.requestQueue.clear()
-    this.dbQueue.clear()
-    await this.middlewareManager.callRoot('onClose')
+  public async close(): Promise<boolean> {
+    return new Promise(async (resolve, reject) => {
+      return this._taskQueue.add(async () => {
+        if (!this._initialized) {
+          throw new Error('[pause] 您的爬虫还未启动.')
+        }
+        if (!['running', 'pause'].includes(this._runStatus)) return resolve(false)
+        await this.middlewareManager.callRoot('onClose')
+        clearPromiseInterval(this._keepProcessTimer)
+        this.fingerprint.closeAutoPersistence()
+        this.requestQueue.clear()
+        this.dbQueue.clear()
+        this.dbQueue
+          .onIdle()
+          .then(() => {
+            // 等待 DB 任务都完成才结束，防止入库中途出现数据丢失
+            let timer = setInterval(() => {
+              const inTaskCont = this.dbQueue.pending + this.dbQueue.size
+              if (inTaskCont <= 0) {
+                this.taskManager.sequelize
+                  .close()
+                  .then(async () => {
+                    this._runStatus = 'closed'
+                    await this.middlewareManager.callRoot('onClosed')
+                    resolve(true)
+                  })
+                  .catch(reject)
+                clearInterval(timer)
+              }
+            }, 50)
+          })
+          .catch(reject)
+          .finally(() => {
+            resolve(true)
+          })
+      })
+    })
   }
 
   /**
    * 暂停爬虫
    * */
-  public async pause(): Promise<void> {
-    this.fingerprint.closeAutoPersistence()
-    this.requestQueue.pause()
-    this.dbQueue.pause()
-    await this.middlewareManager.callRoot('onPause')
+  public async pause(): Promise<boolean> {
+    return new Promise(async (resolve) => {
+      return this._taskQueue.add(async () => {
+        if (!this._initialized) {
+          throw new Error('[pause] 您的爬虫还未启动, 有可能还在初始化，请等待 start 函数的 Promise 完成')
+        }
+        if (!['running', 'ready'].includes(this._runStatus)) return resolve(false)
+        await this.middlewareManager.callRoot('onPause')
+        this.fingerprint.closeAutoPersistence()
+        this.requestQueue.pause()
+        this.dbQueue.pause()
+        this._runStatus = 'pause'
+        await this.middlewareManager.callRoot('onPaused')
+        resolve(true)
+      })
+    })
   }
 
   /**
    * 开始爬虫, 爬虫入口
    * */
-  public async start(): Promise<void> {
-    if (!this.name) {
-      throw new Error('请指定爬虫名称 name')
-    }
-    if (!this._keepProcessTimer) {
-      this._keepProcessTimer = setPromiseInterval(async () => {
-        if (this._runStatus === 'closed') {
-          clearPromiseInterval(this._keepProcessTimer)
+  public async start(): Promise<boolean> {
+    return new Promise(resolve => {
+      return this._taskQueue.add(async () => {
+        if (!this.name) {
+          throw new Error('请指定爬虫名称 name')
         }
-      }, 3000)
-    }
-    if (!this._initialized) {
-      this.options.name = this.name
-      this.setOptions(this.options)
-      this.fingerprint.start()
-      this.requestQueue.start()
-      this.dbQueue.start()
-      await this.taskManager.init()
-      await this.middlewareManager.callRoot('onReady')
-    }
-    await this.middlewareManager.callRoot('onStart')
-    this._initialized = true
+        if (this._runStatus === 'closed') {
+          throw new Error('[start] 您的爬虫已经关闭， 不能再次运行')
+        }
+        if (!['pause', 'ready'].includes(this._runStatus)) return resolve(false)
+        await this.middlewareManager.callRoot('onStart')
+        if (!this._keepProcessTimer) {
+          this._keepProcessTimer = setPromiseInterval(async () => {
+            if (this._runStatus === 'closed') {
+              clearPromiseInterval(this._keepProcessTimer)
+            }
+          }, 3000)
+        }
+        const _initialized = this._initialized
+        if (!_initialized) {
+          this.options.name = this.name
+          this.setOptions(this.options)
+          this.fingerprint.start()
+          this.requestQueue.start()
+          this.dbQueue.start()
+          await this.taskManager.init()
+        }
+        this._runStatus = 'running'
+        this._initialized = true
+        await this.middlewareManager.callRoot('onStarted')
+        if (!_initialized) {
+          await this.middlewareManager.callRoot('onReady')
+        }
+        resolve(true)
+      })
+    })
   }
 
   /**
@@ -159,8 +219,12 @@ export abstract class BaseESpiderInterface<
   protected async autoLoadRequest(len: number) {
     // console.log('当前所需请求数量', len)
     const taskList = await this.taskManager.getTask(len)
-    if (taskList.length === 0) {
-      await this.middlewareManager.callRoot('onIdle')
+    if (taskList.length === 0 && !this._onIdleBlock) {
+      this._onIdleBlock = true
+      this._taskQueue.add(async () => {
+        await this.middlewareManager.callRoot('onIdle')
+        this._onIdleBlock = false
+      }).then()
       return
     }
     taskList.forEach((task) => {

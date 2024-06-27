@@ -108,7 +108,19 @@ export class TaskManager {
           })
         const taskInfoList = foundTaskList.map(dbRes => dbRes.dataValues)
         // console.log(taskInfoList)
-        await this.pendingModel.bulkCreate(taskInfoList)
+        for (const k in taskInfoList) {
+          const task = taskInfoList[k]
+          const [_, created] = await this.pendingModel
+            .findOrCreate({
+              where: {taskId: task.taskId},
+              defaults: task
+            })
+          if (!created) {
+            await this.pendingModel.update(task, {
+              where: {taskId: task.taskId}
+            })
+          }
+        }
         for (const k in foundTaskList) {
           await foundTaskList[k].destroy()
         }
