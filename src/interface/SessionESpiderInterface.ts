@@ -112,7 +112,7 @@ export abstract class SessionESpiderInterface<
     }
 
     const addNewRequest = () => {
-      const sessionVacancy = this.requestQueue.concurrency - this.sessionList.length
+      const sessionVacancy = this.requestQueue.concurrency - this.requestQueue.size - this.requestQueue.pending
       if (sessionVacancy <= 0) return
       this.autoLoadRequest(sessionVacancy).then()
     }

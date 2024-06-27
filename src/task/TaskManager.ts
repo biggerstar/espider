@@ -2,10 +2,9 @@ import {createRequestDBCache} from "@/db/sequelize";
 import {Model, ModelStatic} from "sequelize/lib/model";
 import {Sequelize} from "sequelize";
 import path from "node:path";
-import {DupeFilterOptions, TaskData, TaskManagerOptions} from "@/typings";
-import {everyHasKeys, isString, sleep} from "@biggerstar/tools";
+import {TaskData, TaskManagerOptions} from "@/typings";
+import {everyHasKeys, isString} from "@biggerstar/tools";
 import PQueue from "p-queue";
-import * as process from "process";
 
 /**
  * 任务管理
@@ -40,7 +39,7 @@ export class TaskManager {
       if (!this.requestModel) this.requestModel = models.requests
       if (!this.pendingModel) this.pendingModel = models.pending
     }
-    const historyTaskList = await this.pendingModel.findAll({order: [['priority', 'ASC']]})
+    const historyTaskList = await this.pendingModel.findAll({order: [['priority', 'DESC']]})
     this.historicalTasks = historyTaskList.map(dbRes => {
       const task = dbRes.dataValues
       task.request = JSON.parse(task.request)
@@ -104,6 +103,7 @@ export class TaskManager {
         // console.log('pendingModel before count', await this.pendingModel.count());
         const foundTaskList = await this.requestModel
           .findAll({
+            limit: requireLen,
             order: [['priority', 'DESC']]   // 按优先级排序获取
           })
         const taskInfoList = foundTaskList.map(dbRes => dbRes.dataValues)

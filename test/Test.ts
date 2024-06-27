@@ -63,6 +63,24 @@ export class Test extends SessionESpider {
     }, {
       priority: 1
     })
+
+    for (let i = 0; i < 3000; i++) {
+      console.log(i)
+      spider.addRequestTask({
+        url: `https://baidu.com/q=${i}`,
+        headers: {
+          'aaa': 'aaa2',
+          'ccc': 'ccc2',
+          'bbb': 'bbb2',
+        },
+        data: {
+          'datA-bbb': 'bbb1',
+          'datA-aaa': 'aaa1',
+          'data-ccc': 'ccc1',
+        }
+      })
+    }
+
     // await sleep(2500)
   }
 
@@ -135,21 +153,22 @@ export class Test extends SessionESpider {
 const spider = new Test()
 spider
   .setOptions({
-    requestConcurrency: 2,
+    requestConcurrency: 1,
     dupeFilterOptions: {
       alwaysResetCache: true,
     },
+    requestInterval: 5000,
     taskOptions: {}
   })
   .start()
   .then(() => console.log('启动成功'))
 
-setTimeout(() => {
-  spider.pause().then(isSuccess => console.log('pause', isSuccess))
-}, 2000)
-setTimeout(() => {
-  spider.start().then(isSuccess => console.log('start', isSuccess))
-}, 8000)
-setTimeout(() => {
-  spider.close().then(isSuccess => console.log('close', isSuccess))
-}, 10000)
+// setTimeout(() => {
+//   spider.pause().then(isSuccess => console.log('pause', isSuccess))
+// }, 2000)
+// setTimeout(() => {
+//   spider.start().then(isSuccess => console.log('start', isSuccess))
+// }, 8000)
+// setTimeout(() => {
+//   spider.close().then(isSuccess => console.log('close', isSuccess))
+// }, 10000)

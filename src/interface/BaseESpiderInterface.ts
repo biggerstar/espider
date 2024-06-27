@@ -5,8 +5,6 @@ import {MiddlewareManager} from "@/middleware/MiddlewareManager";
 import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middleware";
 import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
 import {TaskManager} from "@/task/TaskManager";
-import {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
-import {resolve} from "node:path";
 
 
 export abstract class BaseESpiderInterface<
@@ -37,7 +35,7 @@ export abstract class BaseESpiderInterface<
     super();
     const _this = this
     this.requestQueue = new PQueue({
-      interval: 0
+      interval: 0,
     })
     this._initialized = false
     this._onIdleBlock = false
@@ -58,10 +56,12 @@ export abstract class BaseESpiderInterface<
     this.taskManager = new TaskManager()
     this.fingerprint = new RequestDupeFilter()
     const oldAdd = this.requestQueue.add
-    this.requestQueue.add = async function () {  // 重写add 函数进行支持请求间隔
-      const res = oldAdd.apply(this, arguments)
-      await sleep(_this.options.requestInterval)
-      return res
+    this.requestQueue.add = async function (callback: Function) {  // 重写add 函数进行支持请求间隔
+      const newCall = async () => {
+        await callback()
+        await sleep(_this.options.requestInterval)
+      }
+      return await oldAdd.call(this, newCall)
     }
     /*---------------------提取主爬虫事件钩子------------------------*/
     const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
@@ -219,11 +219,13 @@ export abstract class BaseESpiderInterface<
   protected async autoLoadRequest(len: number) {
     // console.log('当前所需请求数量', len)
     const taskList = await this.taskManager.getTask(len)
-    if (taskList.length === 0 && !this._onIdleBlock) {
+    if (len > taskList.length && !this._onIdleBlock) {  // 表示剩余任务少于要求任务数
       this._onIdleBlock = true
       this._taskQueue.add(async () => {
         await this.middlewareManager.callRoot('onIdle')
-        this._onIdleBlock = false
+        setTimeout(() => {
+          this._onIdleBlock = false  // 如果 taskList 一直为空 则会每3秒左右提醒一次 onIdle
+        }, 3000)
       }).then()
       return
     }
