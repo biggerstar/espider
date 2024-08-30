@@ -22,5 +22,4 @@ export async function callDecoratorEvent(
     if (callback) await callback(item.value.bind(spiderInstance))
     else await item.value.call(spiderInstance)
   }
-
 }

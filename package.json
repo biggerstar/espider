@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite-run dev -y",
     "build": "vite-run build -y",
-    "test": "tsx test/Test.ts",
+    "test": "bun test/Test.ts",
     "publish:npm": "npm run build && npm publish"
   },
   "dependencies": {

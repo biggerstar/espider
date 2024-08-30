@@ -23,12 +23,14 @@ export class TestSpider extends SessionESpider {
 
   @SpiderRequest('baidu.com')
   request(request: AxiosSessionRequestConfig) {
-    console.log('request', request)
+    console.log('request')
+    // console.log('request', request)
   }
 
   @SpiderResponse('baidu.com')
   responseFunc(req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
-    console.log('response', res.data)
+    console.log('response')
+    // console.log('response', res.data)
   }
 }
 
