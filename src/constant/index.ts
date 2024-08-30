@@ -1,9 +1,30 @@
+import {BaseESpiderInterfaceOptions, DupeFilterOptions} from "@/typings";
+
 export const SPIDER_ERROR_TYPE = {
   GET_PROXY_ERROR: '获取代理失败'
 }
 
-export enum RequestStatusEnum {
-  READY = 1,
-  PENDING = 2,
-  DONE = 2,
+export const CACHE_DIR_PATH = `./.cache`
+
+export const BaseESpiderDefaultOptions: BaseESpiderInterfaceOptions = {
+  name: '',
+  cacheDirPath: CACHE_DIR_PATH,
+  queueCheckInterval: 500,
+  dbQueueTimeout: 12000,
+  requestQueueTimeout: 12000,
+  requestConcurrency: 1,
+  requestInterval: 0,
+  dupeFilterOptions: {},
+  taskOptions: {}
+}
+
+export const RequestDupeFilterDefaultOptions: DupeFilterOptions = {
+  name: '',
+  supportRequestSize: 1e8,  // 一亿
+  hashes: 2,
+  dupePersistenceInterval: 6.18 * 1000,
+  enableDupeFilter: true,
+  alwaysResetCache: false,
+  filterRule: null,
+  cacheDirPath: CACHE_DIR_PATH,
 }

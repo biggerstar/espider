@@ -5,14 +5,16 @@ import {
   AxiosSessionResponse
 } from "@biggerstar/axios-session";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
+import {callDecoratorEvent} from "@/decorators/common/callDecoratorEvent";
+import {SpiderEventEnum} from "@/enum/SpiderEventEnum";
 
 /**
  * 拦截请求, 响应， 请求和响应错误
  * */
-export function interceptorsSpider(spider: SessionESpiderInterface, session: AxiosSessionInstance) {
+export function interceptorsHttpWithSpider(spider: SessionESpiderInterface, session: AxiosSessionInstance) {
   async function request(req: AxiosSessionRequestConfig): Promise<any> {
-    await spider.middlewareManager.call('onRequest', req.url, async (cb) => {
-      const r = await cb.call(spider, req)
+    await callDecoratorEvent(spider, SpiderEventEnum.SpiderRequest, req.url, async (cb) => {
+      const r = await cb(req)
       if (typeof r === 'object') req = r
     })
     return req
@@ -20,13 +22,13 @@ export function interceptorsSpider(spider: SessionESpiderInterface, session: Axi
 
   async function response(res: AxiosSessionResponse) {
     const reqUrl = res.request?.['res']?.['responseUrl'] || res.config?.url
-    await spider.middlewareManager.call('onResponse', reqUrl, async (cb) => cb.call(spider, res.request, res))
+    await callDecoratorEvent(spider, SpiderEventEnum.SpiderResponse, reqUrl, async (cb) => cb(res.request, res))
     return res
   }
 
   async function catchErr(err: AxiosSessionError) {
     const reqUrl = err.request?.['res']?.['responseUrl'] || err.config?.url
-    await spider.middlewareManager.call('onError', reqUrl, async (cb) => cb.call(spider, err))
+    await callDecoratorEvent(spider, SpiderEventEnum.SpiderError, reqUrl, async (cb) => cb(err))
     return err
   }
 

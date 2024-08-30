@@ -32,15 +32,21 @@ importers:
       redis:
         specifier: ^4.6.14
         version: 4.6.14
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       sequelize:
         specifier: ^6.19.0
         version: 6.37.3(sqlite3@5.1.7)
       sqlite3:
         specifier: ^5.1.7
         version: 5.1.7
-      tsx:
-        specifier: ^4.15.5
-        version: 4.15.5
+      tslib:
+        specifier: ^2.7.0
+        version: 2.7.0
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
     devDependencies:
       '@types/md5':
         specifier: ^2.3.5
@@ -48,6 +54,12 @@ importers:
       '@types/node':
         specifier: ^20.14.2
         version: 20.14.2
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      tsx:
+        specifier: ^4.15.5
+        version: 4.15.5
       vite:
         specifier: ^5.3.1
         version: 5.3.1(@types/node@20.14.2)
@@ -449,6 +461,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/uuid@10.0.0':
+    resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
 
   '@types/validator@13.11.10':
     resolution: {integrity: sha512-e2PNXoXLr6Z+dbfx5zSh9TRlXJrELycxiaXznp4S5+D2M3b9bqJEitNHA5923jhnB2zzFiZHa2f0SI1HoIahpg==}
@@ -1326,6 +1341,9 @@ packages:
   reflect-metadata@0.1.14:
     resolution: {integrity: sha512-ZhYeb6nRaXCfhnndflDK8qI6ZQ/YcWZCISRAWICW9XYqMUwjZM9Z0DveWX/ABN01oxSHwVxKQmxeYZSsm0jh5A==}
 
+  reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
+
   requires-port@1.0.0:
     resolution: {integrity: sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==}
 
@@ -1561,8 +1579,8 @@ packages:
     resolution: {integrity: sha512-Loo5UUvLD9ScZ6jh8beX1T6sO1w2/MpCRpEP7V280GKMVUQ0Jzar2U3UJPsrdbziLEMMhu3Ujnq//rhiFuIeag==}
     engines: {node: '>=6'}
 
-  tslib@2.6.3:
-    resolution: {integrity: sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==}
+  tslib@2.7.0:
+    resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
 
   tsx@4.15.5:
     resolution: {integrity: sha512-iKi8jQ2VBmZ2kU/FkGkL2OSHBHsazsUzsdC/W/RwhKIEsIoZ1alCclZHP5jGfNHEaEWUJFM1GquzCf+4db3b0w==}
@@ -2036,6 +2054,8 @@ snapshots:
       undici-types: 5.26.5
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/uuid@10.0.0': {}
 
   '@types/validator@13.11.10': {}
 
@@ -3020,6 +3040,8 @@ snapshots:
 
   reflect-metadata@0.1.14: {}
 
+  reflect-metadata@0.2.2: {}
+
   requires-port@1.0.0: {}
 
   resolve-pkg-maps@1.0.0: {}
@@ -3076,7 +3098,7 @@ snapshots:
 
   rxjs@7.8.1:
     dependencies:
-      tslib: 2.6.3
+      tslib: 2.7.0
 
   safe-buffer@5.2.1: {}
 
@@ -3276,7 +3298,7 @@ snapshots:
       universalify: 0.2.0
       url-parse: 1.5.10
 
-  tslib@2.6.3: {}
+  tslib@2.7.0: {}
 
   tsx@4.15.5:
     dependencies:

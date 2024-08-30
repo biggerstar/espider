@@ -4,17 +4,16 @@ import {
   AxiosSessionResponse,
   createAxiosSession
 } from "@biggerstar/axios-session";
-import {interceptorsSpider} from "@/functions/interceptorsSpider";
 import {SessionESpiderInterfaceOptions, SessionItem} from "@/typings";
 import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
-import {SessionESpiderInterfaceMiddleware} from "@/middleware/SpiderMiddleware";
 import {choice} from "@biggerstar/tools";
+import {callDecoratorEvent} from "@/decorators/common/callDecoratorEvent";
+import {SpiderEventEnum} from "@/enum/SpiderEventEnum";
+import {interceptorsHttpWithSpider} from "@/functions/interceptorsHttpWithSpider";
 
-export abstract class SessionESpiderInterface<
+export class SessionESpiderInterface<
   Options extends SessionESpiderInterfaceOptions = SessionESpiderInterfaceOptions,
-  Middleware extends SessionESpiderInterfaceMiddleware = SessionESpiderInterfaceMiddleware
-> extends BaseESpiderInterface<Options, Middleware>
-  implements SessionESpiderInterfaceMiddleware {
+> extends BaseESpiderInterface<Options> {
 
   protected sessionList: Array<SessionItem> = []
   private _listeningTimer: NodeJS.Timeout   // 轮询队列的时间周期
@@ -94,8 +93,8 @@ export abstract class SessionESpiderInterface<
       createTime: Date.now()
     }
     this.sessionList.push()
-    interceptorsSpider(<any>this, session)
-    await this.middlewareManager.callRoot('onCreateSession', async (cb) => await cb.call(this, session))
+    interceptorsHttpWithSpider(<any>this, session)
+    await callDecoratorEvent(this, SpiderEventEnum.SpiderCreateSession, null, async (cb) => cb(session))
     return sessionInfo
   }
 

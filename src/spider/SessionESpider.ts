@@ -1,42 +1,49 @@
 import {AddRequestTaskOptions, AddRequestTaskOtherOptions, SessionESpiderOptions} from "@/typings";
 import {SessionESpiderInterface} from "@/interface/SessionESpiderInterface";
-import {SessionESpiderMiddleware} from "@/middleware/SpiderMiddleware";
 import {AxiosSessionRequestConfig} from "@biggerstar/axios-session";
 import {isObject} from "@biggerstar/tools";
 
+
+/**
+ * 使用方式演示:
+ *   async onStart(): Promise<void> {}
+ *   async onStarted(): Promise<void> {}
+ *   async onPause(): Promise<void> {}
+ *   async onPaused(): Promise<void> {}
+ *   async onClose(): Promise<void> {}
+ *   async onClosed(): Promise<void> {}
+ *   onIdle(): Promise<void> | void {}
+ *   onCreateSession(session: AxiosSessionInstance): Promise<void> | void {
+ *     session.setAxiosDefaults({
+ *       // proxyString: ``,
+ *       keepSession: true,
+ *     })
+ *   }
+ *
+ *   '@baidu.com|weibo.com'(): ESpiderRequestMiddleware {
+ *     return {
+ *       onRequestTask<T extends SpiderTask>(task: T): Promise<void> | void {
+ *       },
+ *       onRequest<T extends AxiosSessionRequestConfig>(req: T): Promise<void | T> | void | T {
+ *       },
+ *       onResponse(this: SessionESpider, req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
+ *         this.addToDatabaseQueue(() => {
+ *           console.log('DatabaseQueue 回调')
+ *         })
+ *       },
+ *       onError(this: SessionESpider, err: AxiosSessionError) {
+ *       },
+ *     }
+ *   }
+ *
+ * */
 export class SessionESpider
-  extends SessionESpiderInterface<
-    SessionESpiderOptions,
-    SessionESpiderMiddleware
-  >
-  implements SessionESpiderMiddleware {
-  constructor() {
-    super();
-  }
-
-  /**
-   * 配置爬虫
-   * */
-  public setOptions(opt: Partial<SessionESpiderOptions> = {}): this {
-    super.setOptions(opt)
-    return this
-  }
-
-  public async close(): Promise<boolean> {
-    return super.close()
-  }
-
-  public async pause(): Promise<boolean> {
-    return super.pause()
-  }
-
-  public async start(): Promise<boolean> {
-    return super.start()
-  }
+  extends SessionESpiderInterface<SessionESpiderOptions> {
 
   /**
    * 添加任务到本地数据库队列中，支持断点续爬
    * meta字段应该是个可序列化为字符串的普通对象
+   * @return boolean 是否添加成功
    * */
   public addRequestTask<T extends Partial<AxiosSessionRequestConfig>>(
     req: T | string,
@@ -46,25 +53,24 @@ export class SessionESpider
     if (!finallyReq.url) {
       throw new Error('[addRequestTask] 您添加的请求任务应该包含 url')
     }
-    if (Object.hasOwn(finallyReq, 'meta') && (!finallyReq.meta || !isObject(finallyReq.meta))) {
+    if (Reflect.has(finallyReq, 'meta') && (!finallyReq.meta || !isObject(finallyReq.meta))) {
       throw new TypeError('[addRequestTask] meta 应该是一个对象')
     }
     const fp = this.fingerprint.get(finallyReq)
     /* 这里可以直接通过 finallyReq 确定是否重复， 不需要考虑中间件是否修改了 req 中是否修改了一些字段 */
-    if (this.fingerprint.hasFP(fp)) {
+    if (!options.skipCheck && this.fingerprint.hasFP(fp)) {
       // console.log('请求指纹重复', finallyReq.url)
       return false
     } else {
       this.fingerprint.addRuntimeFP(fp)
     }
 
-    const taskData = {
+    this.taskManager.addTask({
       taskId: fp,
       request: finallyReq,
       priority: options.priority || 0,
       createTime: Date.now(),
-    }
-    this.taskManager.addTask(taskData).then()
+    }).then()
     return true
   }
 }

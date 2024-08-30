@@ -1,9 +1,7 @@
 import {Sequelize} from "sequelize";
 import {Model, ModelStatic} from "sequelize/types/model";
 import {AxiosSessionInstance, AxiosSessionRequestConfig} from "@biggerstar/axios-session";
-import {RequestStatusEnum} from "@/constant";
-import {BaseESpiderInterface} from "@/interface/BaseESpiderInterface";
-import {BaseESpiderInterfaceMiddleware} from "@/middleware";
+import {RequestStatusEnum, SpiderEventEnum} from "@/enum/SpiderEventEnum";
 
 export type BaseESpiderInterfaceOptions = {
   /**
@@ -83,6 +81,10 @@ export type TaskManagerOptions = {
   requestModel: ModelStatic<Model>
   /** 控制正在请求数据库表的 sequelize 模型 */
   pendingModel: ModelStatic<Model>
+  /**
+   * 每次都清空上一次的请求队列
+   * */
+  alwaysResetQueue: boolean
 }
 
 export type TaskData = {
@@ -94,13 +96,6 @@ export type TaskData = {
 
 export type AddRequestTaskAllowField = 'meta' | 'method' | 'url' | 'data' | 'headers'
 export type AddRequestTaskOptions = Pick<AxiosSessionRequestConfig, AddRequestTaskAllowField>
-export type BaseSpiderEventNames = keyof BaseESpiderInterfaceMiddleware
-export type SessionESpiderEventNames = BaseSpiderEventNames | 'onCreateSession'
-
-export type BusEventData<EventNames extends BaseSpiderEventNames> = {
-  spider: BaseESpiderInterface<BaseESpiderInterfaceOptions, BaseESpiderInterfaceMiddleware>,
-  matchUrl?: string,
-}
 
 export type SessionItem = { pending: boolean, session: AxiosSessionInstance, createTime: number }
 export type SpiderTask<Task extends Record<any, any> = Record<any, any>> = {
@@ -114,7 +109,11 @@ export type AddRequestTaskOtherOptions = {
   /**
    * 任务优先级
    * */
-  priority: number
+  priority: number,
+  /**
+   * 不检查指纹( 是否重复 )直接添加任务
+   * */
+  skipCheck: boolean
 }
 
 export type DupeFilterOptions = {
@@ -136,21 +135,14 @@ export type DupeFilterOptions = {
    * 布隆基础过滤器 ( bloom-filters ) 的哈希函数的个数
    * @default 2
    * */
-  hashes: boolean
+  hashes: number
 
   /**
    * 设置支持的去重请求数量，需要根据开发者做的实际的业务进行设置
    * 默认支持 一亿请求过滤， 可以调高， 但是占用的缓存也会增加，目前缓存占用参考 1亿请求将多占用缓存 16.7m 磁盘内存
    * @default 1e8
    * */
-  supportRequestSize: boolean
-
-  /**
-   * 去重缓存文件的存放路径
-   * 默认放启动路径， 如果是包运行则在包根路径
-   * @default './.cache/{spider-name}.request.filter'
-   * */
-  dupeFilterCacheFilePath: string
+  supportRequestSize: number
 
   /**
    * 对请求去重进行持久化缓存的间隔
@@ -162,8 +154,15 @@ export type DupeFilterOptions = {
    * 是否开启请求指纹过滤去重
    * @default true
    * */
-  enableDupeFilter: number
+  enableDupeFilter: boolean
   /** 手动定义去重规则， 返回一个能表示某个请求的唯一 hash */
-  filterRule(req: AxiosSessionRequestConfig): string
+  filterRule(req: Partial<AxiosSessionRequestConfig>): string
 }
 
+export type SpiderEventSetItem = {
+  eventName: keyof typeof SpiderEventEnum,
+  callName: string | symbol
+  value: Function,
+  args: any[],
+  isMatchUrl: boolean
+}

@@ -4,72 +4,54 @@ import {DupeFilterOptions} from "@/typings";
 import path from "node:path";
 import fs from "node:fs";
 import md5 from "md5";
-import {clearPromiseInterval, everyHasKeys, setPromiseInterval} from "@biggerstar/tools";
+import {clearPromiseInterval, deepmerge, setPromiseInterval} from "@biggerstar/tools";
+import {RequestDupeFilterDefaultOptions} from "@/constant";
 
 export class RequestDupeFilter {
-  public name: string
-  public cacheDirPath: string
-  public alwaysResetCache: boolean
-  public hashes: number
-  public supportRequestSize: number
-  public dupeFilterCacheFilePath: string
-  public dupePersistenceInterval: number
-  public enableDupeFilter: boolean
+  public options: DupeFilterOptions
+  private dupeFilterCacheFilePath: string
   private _persistenceTimer: number
-  public _running: boolean
-  public filterRule: (req: Partial<AxiosSessionRequestConfig>) => string
+  private _running: boolean
   private filter: BloomFilter
   private runtimeFilter: BloomFilter
   private runtimeFilterHash: string[]
 
   constructor() {
-    this.supportRequestSize = 1e8   // 一亿
-    this.hashes = 2
-    this.dupePersistenceInterval = 6.18 * 1000
-    this.enableDupeFilter = true
-    this.alwaysResetCache = false
+    this.options = {
+      ...RequestDupeFilterDefaultOptions,
+      filterRule: this._filterRule,
+    }
     this.runtimeFilterHash = []
-    this.filterRule = this._filterRule
   }
 
   /**
    * 进行配置
    * */
   public setOptions(opt: Partial<DupeFilterOptions> & Record<any, any> = {}) {
-    const whiteList: Array<keyof DupeFilterOptions> = [
-      'name',
-      'cacheDirPath',
-      'alwaysResetCache',
-      'hashes',
-      'supportRequestSize',
-      'dupeFilterCacheFilePath',
-      'dupePersistenceInterval',
-      'enableDupeFilter',
-      'filterRule',
-    ]
-    whiteList.forEach((name: any) => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
+    deepmerge(this.options, opt)
+    return this
   }
 
   /**
    * 启动
    * */
   public start() {
-    if (!this.name) {
+    if (!this.options.name) {
       throw new Error('请指定爬虫名称 name')
     }
-    if (!this.enableDupeFilter) return;
+    if (!this.options.enableDupeFilter) return;
     if (this._running) return
-    this.dupeFilterCacheFilePath = path.resolve(this.cacheDirPath, `${this.name}.request.filter`)
+    this.dupeFilterCacheFilePath = path.resolve(this.options.cacheDirPath, `${this.options.name}.request.filter`)
     if (!this.filter) {
       const existsFilterCache = fs.existsSync(this.dupeFilterCacheFilePath)
       const createCache = () => {
         if (existsFilterCache) {
           fs.renameSync(this.dupeFilterCacheFilePath, `${this.dupeFilterCacheFilePath}.bak`)
         }
-        this.filter = new pkg.BloomFilter(this.supportRequestSize, this.hashes)
+        this.filter = new pkg.BloomFilter(this.options.supportRequestSize, this.options.hashes)
         this._persistence()
       }
-      if (this.alwaysResetCache || !existsFilterCache) createCache()
+      if (this.options.alwaysResetCache || !existsFilterCache) createCache()
       else if (existsFilterCache) {
         const recordFilterContent = fs.readFileSync(this.dupeFilterCacheFilePath, 'utf8')
         if (!recordFilterContent.trim()) createCache()
@@ -86,11 +68,11 @@ export class RequestDupeFilter {
     clearPromiseInterval(this._persistenceTimer)
     this._persistenceTimer = setPromiseInterval(async () => {
       this._persistence()
-    }, this.dupePersistenceInterval, {
+    }, this.options.dupePersistenceInterval, {
       doFirst: false,
       doLast: true,
     })
-    this.runtimeFilter = new pkg.BloomFilter(this.supportRequestSize, this.hashes)
+    this.runtimeFilter = new pkg.BloomFilter(this.options.supportRequestSize, this.options.hashes)
     this._running = true
   }
 
@@ -122,7 +104,7 @@ export class RequestDupeFilter {
     let method = req.method ? req.method.toLowerCase() : 'get'
     if (typeof finallyReq.headers === 'object') {
       headerString = Object.keys(finallyReq.headers)
-        .toSorted()
+        .sort()
         .map(name => `${name.toLowerCase()}=${finallyReq.headers[name]}`)
         .toString()
     }
@@ -131,7 +113,7 @@ export class RequestDupeFilter {
     // } 
     if (typeof finallyReq.data === 'object') {
       dataString = Object.keys(finallyReq.data)
-        .toSorted()
+        .sort()
         .map(name => `${name}=${finallyReq.data[name]}`)
         .toString()
     }
@@ -143,7 +125,7 @@ export class RequestDupeFilter {
    * 获取该请求的指纹
    * */
   public get(req: Partial<AxiosSessionRequestConfig>) {
-    return this.filterRule(req)
+    return this.options.filterRule(req)
   }
 
   /**

@@ -3,7 +3,7 @@ import {Model, ModelStatic} from "sequelize/lib/model";
 import {Sequelize} from "sequelize";
 import path from "node:path";
 import {TaskData, TaskManagerOptions} from "@/typings";
-import {everyHasKeys, isString} from "@biggerstar/tools";
+import {isString} from "@biggerstar/tools";
 import PQueue from "p-queue";
 
 /**
@@ -20,10 +20,12 @@ export class TaskManager {
   public queue: PQueue
   public name: string
   public cacheDirPath: string
+  public alwaysResetQueue: boolean
 
   constructor() {
     this.queue = new PQueue({concurrency: 1})
     this.historicalTasks = []
+    this.alwaysResetQueue = false
   }
 
   public async init() {
@@ -38,6 +40,11 @@ export class TaskManager {
       const models = await createRequestDBCache(this.sequelize, this.name)
       if (!this.requestModel) this.requestModel = models.requests
       if (!this.pendingModel) this.pendingModel = models.pending
+    }
+    if (this.alwaysResetQueue) {
+      // 每次重启的时候清空历史的队列数据库
+      await this.pendingModel.destroy({truncate: true})
+      await this.requestModel.destroy({truncate: true})
     }
     const historyTaskList = await this.pendingModel.findAll({order: [['priority', 'DESC']]})
     this.historicalTasks = historyTaskList.map(dbRes => {
@@ -54,8 +61,13 @@ export class TaskManager {
       'sequelize',
       'requestModel',
       'pendingModel',
+      'alwaysResetQueue',
     ]
-    whiteList.forEach((name: any) => everyHasKeys(this, opt, [name]) && (this[name] = opt[name]))
+    whiteList.forEach((name: any) => {
+      if (opt[name] !== undefined) {
+        this[name] = opt[name]
+      }
+    })
     return this
   }
 
@@ -95,7 +107,7 @@ export class TaskManager {
     }
     const requireLen = len - taskList.length
     // console.log('requireLen', requireLen)
-    if (requireLen <= 0) return taskList
+    if (!isFinite(requireLen) || requireLen <= 0) return taskList
     return new Promise((resolve) => {
       /* 看看除了历史任务还需要从数据库补多少任务 */
       return this.queue.add(async () => {
@@ -137,13 +149,13 @@ export class TaskManager {
    * 通过 taskId 移除请求任务， 通常在任务完成后使用
    * */
   public async removeRequestTask(taskId: string) {
-    await this.requestModel.destroy({where: {taskId}})
+    return this.queue.add(() => this.requestModel.destroy({where: {taskId}}))
   }
 
   /**
    * 通过 taskId 移除当前正在请求数据库中的缓存任务， 通常在任务完成后使用
    * */
   public async removePendingTask(taskId: string) {
-    await this.pendingModel.destroy({where: {taskId}})
+    return this.queue.add(() => this.pendingModel.destroy({where: {taskId}}))
   }
 }

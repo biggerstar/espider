@@ -1,26 +1,29 @@
 import {BaseESpiderInterfaceOptions} from "@/typings";
 import PQueue from "p-queue";
 import {RequestDupeFilter} from "@/interface/RequestDupeFilter";
-import {MiddlewareManager} from "@/middleware/MiddlewareManager";
-import {BaseESpiderInterfaceMiddleware, ESpiderRequestMiddleware} from "@/middleware";
-import {clearPromiseInterval, isFunction, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
-import {TaskManager} from "@/task/TaskManager";
+import {clearPromiseInterval, isNumber, setPromiseInterval, sleep} from "@biggerstar/tools";
+import {BaseESpiderDefaultOptions} from "@/constant";
+import {callDecoratorEvent} from "@/decorators/common/callDecoratorEvent";
+import {SpiderEventEnum} from "@/enum/SpiderEventEnum";
+import {TaskManager} from "@/interface/TaskManager";
 
-
-export abstract class BaseESpiderInterface<
-  Options extends BaseESpiderInterfaceOptions,
-  Middleware extends BaseESpiderInterfaceMiddleware
-> extends BaseESpiderInterfaceMiddleware
-  implements BaseESpiderInterfaceMiddleware {
-
-  [matchUrl: `@${string}`]: () => ESpiderRequestMiddleware
-
+/**
+ * 需要 ts 开启支持装饰器
+ * tsconfig.json:
+ *   "experimentalDecorators": true,
+ *   "emitDecoratorMetadata": true,
+ * */
+export class BaseESpiderInterface<
+  Options extends BaseESpiderInterfaceOptions = BaseESpiderInterfaceOptions,
+> {
   public declare name: string
-  public readonly options: Options & Record<any, any>
-  public readonly requestQueue: PQueue
-  public readonly dbQueue: PQueue
+  protected readonly options: Options & Record<any, any>
+  protected readonly requestQueue: PQueue
+  private readonly dbQueue: PQueue
+  /**
+   * 控制任务流， 比如暂停 开始 结束
+   * */
   protected readonly _taskQueue: PQueue
-  public readonly middlewareManager: MiddlewareManager<Middleware, ESpiderRequestMiddleware>
   public readonly fingerprint: RequestDupeFilter
   public readonly taskManager: TaskManager
   protected _runStatus: 'pause' | 'ready' | 'closed' | 'running'
@@ -29,10 +32,7 @@ export abstract class BaseESpiderInterface<
   protected _initialized: boolean;
   private _onIdleBlock: boolean
 
-  public abstract doRequest(req: any): Promise<any>
-
   protected constructor() {
-    super();
     const _this = this
     this.requestQueue = new PQueue({
       interval: 0,
@@ -42,17 +42,7 @@ export abstract class BaseESpiderInterface<
     this._runStatus = 'ready'
     this.dbQueue = new PQueue({concurrency: 1})
     this._taskQueue = new PQueue({concurrency: 1})
-    this.middlewareManager = new MiddlewareManager(this)
-    this.options = {} as any
-    Object.assign(this.options, <BaseESpiderInterfaceOptions>{
-      name: '',
-      cacheDirPath: `./.cache`,
-      queueCheckInterval: 500,
-      dbQueueTimeout: 12000,
-      requestQueueTimeout: 12000,
-      requestConcurrency: 1,
-      requestInterval: 0,
-    })
+    this.options = {...BaseESpiderDefaultOptions} as any
     this.taskManager = new TaskManager()
     this.fingerprint = new RequestDupeFilter()
     const oldAdd = this.requestQueue.add
@@ -63,35 +53,23 @@ export abstract class BaseESpiderInterface<
       }
       return await oldAdd.call(this, newCall)
     }
-    /*---------------------提取主爬虫事件钩子------------------------*/
-    const descriptors = Object.getOwnPropertyDescriptors(this.constructor.prototype)
-    /* 主蜘蛛中间件 */
-    this.middlewareManager.addRootMiddleware(<any>this)
-    Promise.resolve().then(() => {
-      // 这里是可以直接使用 Promise 的，因为启动也是 Promise， 不会影响正常运行
-      /* 定义到原型的地址匹配中间件 */
-      Object.keys(descriptors)
-        .filter(keyName => keyName.startsWith('@') && isFunction(this[keyName]))
-        .forEach(name => this.middlewareManager.addMiddleware(name.slice(1), this[name]()))
-      /* 直接复制到实例的地址的请求中间件 */
-      for (const name in this) {
-        if (!name.startsWith('@') || !isFunction(this[name])) continue
-        this.middlewareManager.addMiddleware(name.slice(1), this[name as any]())
-      }
-    })
   }
-
+  /**
+   * 配置爬虫
+   * */
   public setOptions(opt: Partial<BaseESpiderInterfaceOptions>): this {
     Object.assign(this.options, opt)
     if (isNumber(opt.requestConcurrency)) this.requestQueue.concurrency = opt.requestConcurrency
     if (isNumber(opt.dbQueueTimeout)) this.dbQueue.timeout = opt.dbQueueTimeout
     if (isNumber(opt.requestQueueTimeout)) this.requestQueue.timeout = opt.requestQueueTimeout
     this.fingerprint.setOptions({
-      ...opt,
+      name: this.options.name,
+      cacheDirPath: this.options.cacheDirPath,
       ...opt.dupeFilterOptions
     })
     this.taskManager.setOptions({
-      ...opt,
+      name: this.options.name,
+      cacheDirPath: this.options.cacheDirPath,
       ...opt.taskOptions
     })
     return this
@@ -107,7 +85,7 @@ export abstract class BaseESpiderInterface<
           throw new Error('[pause] 您的爬虫还未启动.')
         }
         if (!['running', 'pause'].includes(this._runStatus)) return resolve(false)
-        await this.middlewareManager.callRoot('onClose')
+        await callDecoratorEvent(this, SpiderEventEnum.SpiderClose)
         clearPromiseInterval(this._keepProcessTimer)
         this.fingerprint.closeAutoPersistence()
         this.requestQueue.clear()
@@ -123,7 +101,7 @@ export abstract class BaseESpiderInterface<
                   .close()
                   .then(async () => {
                     this._runStatus = 'closed'
-                    await this.middlewareManager.callRoot('onClosed')
+                    await callDecoratorEvent(this, SpiderEventEnum.SpiderClosed)
                     resolve(true)
                   })
                   .catch(reject)
@@ -149,12 +127,12 @@ export abstract class BaseESpiderInterface<
           throw new Error('[pause] 您的爬虫还未启动, 有可能还在初始化，请等待 start 函数的 Promise 完成')
         }
         if (!['running', 'ready'].includes(this._runStatus)) return resolve(false)
-        await this.middlewareManager.callRoot('onPause')
+        await callDecoratorEvent(this, SpiderEventEnum.SpiderPause)
         this.fingerprint.closeAutoPersistence()
         this.requestQueue.pause()
         this.dbQueue.pause()
         this._runStatus = 'pause'
-        await this.middlewareManager.callRoot('onPaused')
+        await callDecoratorEvent(this, SpiderEventEnum.SpiderPaused)
         resolve(true)
       })
     })
@@ -173,7 +151,15 @@ export abstract class BaseESpiderInterface<
           throw new Error('[start] 您的爬虫已经关闭， 不能再次运行')
         }
         if (!['pause', 'ready'].includes(this._runStatus)) return resolve(false)
-        await this.middlewareManager.callRoot('onStart')
+        try {
+          await callDecoratorEvent(this, SpiderEventEnum.SpiderStart)
+
+        } catch (e) {
+          if (e.message && e.message.startsWith('TypeError: undefined')) {
+            e.message = e.message + 'onStart 事件运行时爬虫主体功能还未启动.'
+            throw e
+          }
+        }
         if (!this._keepProcessTimer) {
           this._keepProcessTimer = setPromiseInterval(async () => {
             if (this._runStatus === 'closed') {
@@ -192,9 +178,9 @@ export abstract class BaseESpiderInterface<
         }
         this._runStatus = 'running'
         this._initialized = true
-        await this.middlewareManager.callRoot('onStarted')
+        await callDecoratorEvent(this, SpiderEventEnum.SpiderStarted)
         if (!_initialized) {
-          await this.middlewareManager.callRoot('onReady')
+          await callDecoratorEvent(this, SpiderEventEnum.SpiderReady)
         }
         resolve(true)
       })
@@ -222,7 +208,7 @@ export abstract class BaseESpiderInterface<
     if (len > taskList.length && !this._onIdleBlock) {  // 表示剩余任务少于要求任务数
       this._onIdleBlock = true
       this._taskQueue.add(async () => {
-        await this.middlewareManager.callRoot('onIdle')
+        await callDecoratorEvent(this, SpiderEventEnum.SpiderIdle)
         setTimeout(() => {
           this._onIdleBlock = false  // 如果 taskList 一直为空 则会每3秒左右提醒一次 onIdle
         }, 3000)
@@ -231,8 +217,9 @@ export abstract class BaseESpiderInterface<
     }
     taskList.forEach((task) => {
       this.requestQueue.add(async () => {
-        await this.middlewareManager.call(
-          'onRequestTask',
+        await callDecoratorEvent(
+          this,
+          SpiderEventEnum.SpiderRequestTask,
           task.request.url,
           async (cb) => {
             await cb.call(this, task)
@@ -244,6 +231,13 @@ export abstract class BaseESpiderInterface<
           })
       })
     })
+  }
+
+  /**
+   * 进行请求， 不需要考虑错误处理， 因为在 interceptorsSpider 函数中已经处理了错误
+   * */
+  public doRequest(_: any): Promise<any> {
+    throw new Error('请在子类中实现 doRequest 函数')
   }
 }
 
