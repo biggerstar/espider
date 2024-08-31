@@ -3,7 +3,7 @@ import {Model, ModelStatic} from "sequelize/lib/model";
 import {Sequelize} from "sequelize";
 import path from "node:path";
 import {TaskData, TaskManagerOptions} from "@/typings";
-import {isString} from "@biggerstar/tools";
+import {sleep} from "@biggerstar/tools";
 import PQueue from "p-queue";
 
 /**
@@ -21,11 +21,14 @@ export class TaskManager {
   public name: string
   public cacheDirPath: string
   public alwaysResetQueue: boolean
+  /** 当前正在数据库读取任务的个数计数器 */
+  public readingCounter: number
 
   constructor() {
     this.queue = new PQueue({concurrency: 1})
     this.historicalTasks = []
     this.alwaysResetQueue = false
+    this.readingCounter = 0
   }
 
   public async init() {
@@ -47,11 +50,7 @@ export class TaskManager {
       await this.requestModel.destroy({truncate: true})
     }
     const historyTaskList = await this.pendingModel.findAll({order: [['priority', 'DESC']]})
-    this.historicalTasks = historyTaskList.map(dbRes => {
-      const task = dbRes.dataValues
-      task.request = JSON.parse(task.request)
-      return task
-    })
+    this.historicalTasks = historyTaskList.map(dbRes => dbRes.dataValues)
   }
 
   public setOptions(opt: Partial<TaskManagerOptions> = {}): this {
@@ -75,9 +74,7 @@ export class TaskManager {
    * 添加任务到数据库中，如果不存在创建， 如果存在则更新
    * */
   public addTask(taskData: TaskData) {
-    if (!isString(taskData.request)) {
-      taskData.request = JSON.stringify(taskData.request) as any
-    }
+    if (!taskData.request) taskData.request = {}
     return this.queue.add(async () => {
       const [_, created] = await this.requestModel
         .findOrCreate({
@@ -93,10 +90,34 @@ export class TaskManager {
   }
 
   /**
+   * 增加计数正在数据库中读取的任务数
+   * */
+  private increaseCounter(len: number, async: boolean = false) {
+    if (async) {
+      sleep(10).then(() => this.readingCounter = len)  // sleep 类似 nextick
+    } else {
+      this.readingCounter = len
+    }
+  }
+
+  /**
+   * 减少计数正在数据库中读取的任务数
+   * */
+  private decreaseCounter(len: number, async: boolean = false) {
+    const newNumber = Math.max(0, this.readingCounter - len)
+    if (async) {
+      sleep(10).then(() => this.readingCounter = newNumber)
+    } else {
+      this.readingCounter = newNumber
+    }
+  }
+
+  /**
    * @param len 传入所需获取的任务个数
    * 任务取出来后立马会被放置到 pendingModel 引用的数据库中
    * */
   public async getTask(len: number): Promise<TaskData[]> {
+    this.increaseCounter(len)
     let taskList: TaskData[]
     /* 先看看是否有上次任务停止时未完成的任务 */
     if (this.historicalTasks.length >= len) {
@@ -107,12 +128,13 @@ export class TaskManager {
     }
     const requireLen = len - taskList.length
     // console.log('requireLen', requireLen)
-    if (!isFinite(requireLen) || requireLen <= 0) return taskList
+    if (!isFinite(requireLen) || requireLen <= 0) {
+      this.decreaseCounter(len, true)
+      return taskList
+    }
     return new Promise((resolve) => {
       /* 看看除了历史任务还需要从数据库补多少任务 */
       return this.queue.add(async () => {
-        // console.log('requestModel before count', await this.requestModel.count());
-        // console.log('pendingModel before count', await this.pendingModel.count());
         const foundTaskList = await this.requestModel
           .findAll({
             limit: requireLen,
@@ -136,11 +158,9 @@ export class TaskManager {
         for (const k in foundTaskList) {
           await foundTaskList[k].destroy()
         }
-        // console.log('requestModel count', await this.requestModel.count());
-        // console.log('pendingModel count', await this.pendingModel.count());
-        taskInfoList.forEach(task => task.request = JSON.parse(task.request))
         taskList = taskList.concat([...taskInfoList])
         resolve(taskList)
+        this.decreaseCounter(len, true)
       })
     })
   }

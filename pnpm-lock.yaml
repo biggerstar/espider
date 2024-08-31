@@ -9,14 +9,11 @@ importers:
   .:
     dependencies:
       '@biggerstar/axios-session':
-        specifier: ^0.3.22
-        version: 0.3.22
+        specifier: ^0.3.23
+        version: 0.3.23
       '@biggerstar/tools':
         specifier: ^0.0.15
         version: 0.0.15
-      axios:
-        specifier: ^1.7.5
-        version: 1.7.5
       bloom-filters:
         specifier: ^3.0.2
         version: 3.0.2
@@ -95,8 +92,8 @@ packages:
     resolution: {integrity: sha512-/l42B1qxpG6RdfYf343Uw1vmDjeNhneUXtzhojE7pDgfpEypmRhI6j1kr17XCVv4Cgl9HdAiQY2x0GwKm7rWCw==}
     engines: {node: '>=6.9.0'}
 
-  '@biggerstar/axios-session@0.3.22':
-    resolution: {integrity: sha512-Tuw7afEjreDc+OdhXwx9/BreThNDVt6SPiyBARN7E+e9L8ehJ6MkMUJkrffKDf54pkg/Ux8XqTYNCNUfn7aSHw==}
+  '@biggerstar/axios-session@0.3.23':
+    resolution: {integrity: sha512-xlNPfeZ1CI51XFer8q3OCRj5mrt4yr233zp4GO/f93waxCmD9v19UqPaP3PSmdOE77uXSXHo8ReaDXFrCQhkHQ==}
 
   '@biggerstar/deepmerge@1.0.3':
     resolution: {integrity: sha512-bGMTpQlQYEVZ5xdHGLdFOgot+YgbtkKlRIxexOhxrsHnsQHGDWw8vaj1K8BfLJPOh6TzjISZk+JBKqPMjXBb/Q==}
@@ -695,8 +692,8 @@ packages:
     peerDependencies:
       axios: 0.x || 1.x
 
-  axios@1.7.5:
-    resolution: {integrity: sha512-fZu86yCo+svH3uqJ/yTdQ0QHpQu5oL+/QE+QPSv6BZSkDAoky9vytxp7u5qk83OJFS3kEBcesWni9WTZAv3tSw==}
+  axios@1.7.6:
+    resolution: {integrity: sha512-Ekur6XDwhnJ5RgOCaxFnXyqlPALI3rVeukZMwOdfghW7/wGz784BYKiQq+QD8NPcr91KRo30KfHOchyijwWw7g==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -1869,11 +1866,11 @@ snapshots:
       '@babel/helper-validator-identifier': 7.24.7
       to-fast-properties: 2.0.0
 
-  '@biggerstar/axios-session@0.3.22':
+  '@biggerstar/axios-session@0.3.23':
     dependencies:
       '@types/tough-cookie': 4.0.5
-      axios: 1.7.5
-      axios-retry: 4.5.0(axios@1.7.5)
+      axios: 1.7.6
+      axios-retry: 4.5.0(axios@1.7.6)
       https-proxy-agent: 7.0.5
       set-cookie-parser: 2.7.0
       tough-cookie: 4.1.4
@@ -2346,12 +2343,12 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios-retry@4.5.0(axios@1.7.5):
+  axios-retry@4.5.0(axios@1.7.6):
     dependencies:
-      axios: 1.7.5
+      axios: 1.7.6
       is-retry-allowed: 2.2.0
 
-  axios@1.7.5:
+  axios@1.7.6:
     dependencies:
       follow-redirects: 1.15.6
       form-data: 4.0.0

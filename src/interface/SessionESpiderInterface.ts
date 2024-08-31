@@ -111,7 +111,13 @@ export class SessionESpiderInterface<
     }
 
     const addNewRequest = () => {
-      const sessionVacancy = this.requestQueue.concurrency - this.requestQueue.size - this.requestQueue.pending
+      const sessionVacancy =
+        this.requestQueue.concurrency -
+        this.requestQueue.size -
+        this.requestQueue.pending -
+        this.taskManager.readingCounter
+
+      // console.log(sessionVacancy, this.taskManager.readingCounter)
       if (sessionVacancy <= 0) return
       this.autoLoadRequest(sessionVacancy).then()
     }
@@ -122,7 +128,7 @@ export class SessionESpiderInterface<
       addNewRequest()
     }
     if (this._listeningTimer) clearInterval(this._listeningTimer)
-    this._listeningTimer = setInterval(() => listening(), Math.min(500, this.options.queueCheckInterval))
+    this._listeningTimer = setInterval(() => listening(), Math.max(500, this.options.queueCheckInterval))
   }
 
   /**
@@ -132,9 +138,11 @@ export class SessionESpiderInterface<
     const sessionInfo = await this.getAvailableSession()
     sessionInfo.pending = true
     const pendingRequest = sessionInfo.session.request(req)
-    pendingRequest.finally(() => {
-      sessionInfo.pending = false
-    })
+    pendingRequest
+      .catch(() => void 0)
+      .finally(() => {
+        sessionInfo.pending = false
+      })
     return pendingRequest
   }
 }

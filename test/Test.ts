@@ -1,6 +1,12 @@
 import {SessionESpider} from "@/spider";
-import type {AxiosSessionRequestConfig, AxiosSessionResponse} from "@biggerstar/axios-session";
-import {SpiderReady, SpiderRequest, SpiderResponse} from "../src";
+import type {
+  AxiosSessionError,
+  AxiosSessionInstance,
+  AxiosSessionRequestConfig,
+  AxiosSessionResponse
+} from "@biggerstar/axios-session";
+import {SpiderCreateSession, SpiderError, SpiderReady, SpiderRequest, SpiderResponse} from "../src";
+import * as url from "url";
 
 
 export class TestSpider extends SessionESpider {
@@ -9,28 +15,49 @@ export class TestSpider extends SessionESpider {
   @SpiderReady()
   onReady() {
     console.log('onReady执行')
-    this.addRequestTask({
-      url: 'https://www.baidu.com?' + Date.now(),
-    }, {
-      skipCheck: true
-    })
+    // this.addRequestTask({
+    //   url: 'https://www.baidu.com?' + Date.now(),
+    // }, {
+    //   skipCheck: true
+    // })
     // for (let i = 0; i < 30; i++) {
     //   this.addRequestTask({
     //     url: 'https://www.baidu.com?' + Date.now(),
     //   })
     // }
+    for (let i = 0; i <= 10; i++) {
+      // const url = `https://www.onergys.de/index.php?lang=1&cl=search&&pgNr=${i}`
+      const url = `http://baidu2.com/ss?a=${i}`
+      this.addRequestTask({
+        url: url,
+        maxRedirects: 0
+      }, {
+        // skipCheck: true
+      })
+    }
+    console.log('添加任务结束')
   }
 
-  @SpiderRequest('baidu.com')
+  @SpiderCreateSession()
+  patchProxy(session: AxiosSessionInstance) {
+  }
+
+  @SpiderRequest()
   request(request: AxiosSessionRequestConfig) {
-    console.log('request')
+    console.log('request', request.url)
     // console.log('request', request)
   }
 
-  @SpiderResponse('baidu.com')
-  responseFunc(req: AxiosSessionRequestConfig, res: AxiosSessionResponse) {
-    console.log('response')
+  @SpiderResponse()
+  responseFunc(res: AxiosSessionResponse, req: AxiosSessionRequestConfig) {
+    console.log('response', req.url)
     // console.log('response', res.data)
+  }
+
+  @SpiderError()
+  onError(err: AxiosSessionError, req: AxiosSessionRequestConfig) {
+    // console.log(err.message)
+    console.log(req)
   }
 }
 
@@ -41,7 +68,7 @@ spider.setOptions({
   dupeFilterOptions: {
     alwaysResetCache: true,
   },
-  requestInterval: 5000,
+  requestInterval: 0,
   taskOptions: {
     alwaysResetQueue: true,
   }

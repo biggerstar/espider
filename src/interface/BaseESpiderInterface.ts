@@ -48,12 +48,15 @@ export class BaseESpiderInterface<
     const oldAdd = this.requestQueue.add
     this.requestQueue.add = async function (callback: Function) {  // 重写add 函数进行支持请求间隔
       const newCall = async () => {
-        await callback()
-        await sleep(_this.options.requestInterval)
+        const res = await callback()
+        const requestInterval = _this.options.requestInterval
+        requestInterval && await sleep(requestInterval)
+        return res
       }
-      return await oldAdd.call(this, newCall)
+      return oldAdd.call(this, newCall)
     }
   }
+
   /**
    * 配置爬虫
    * */
@@ -221,14 +224,16 @@ export class BaseESpiderInterface<
           this,
           SpiderEventEnum.SpiderRequestTask,
           task.request.url,
-          async (cb) => {
-            await cb.call(this, task)
-          })
-        await this.doRequest(task.request)
+          (cb) => cb(task)
+        )
+
+        await this
+          .doRequest(task.request)
           .then((_) => {
             this.fingerprint.add(task.request)
             this.taskManager.removePendingTask(task.taskId)
           })
+          .catch(() => void 0)
       })
     })
   }

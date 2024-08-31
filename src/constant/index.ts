@@ -9,7 +9,7 @@ export const CACHE_DIR_PATH = `./.cache`
 export const BaseESpiderDefaultOptions: BaseESpiderInterfaceOptions = {
   name: '',
   cacheDirPath: CACHE_DIR_PATH,
-  queueCheckInterval: 500,
+  queueCheckInterval: 1000,
   dbQueueTimeout: 12000,
   requestQueueTimeout: 12000,
   requestConcurrency: 1,

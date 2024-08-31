@@ -1,7 +1,7 @@
 {
   "name": "espider",
   "type": "module",
-  "version": "0.3.1",
+  "version": "0.3.8",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,9 +13,8 @@
     "publish:npm": "npm run build && npm publish"
   },
   "dependencies": {
-    "@biggerstar/axios-session": "^0.3.22",
+    "@biggerstar/axios-session": "^0.3.23",
     "@biggerstar/tools": "^0.0.15",
-    "axios": "^1.7.5",
     "bloom-filters": "^3.0.2",
     "cheerio": "1.0.0-rc.12",
     "md5": "^2.3.0",

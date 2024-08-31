@@ -22,18 +22,19 @@ export function interceptorsHttpWithSpider(spider: SessionESpiderInterface, sess
 
   async function response(res: AxiosSessionResponse) {
     const reqUrl = res.request?.['res']?.['responseUrl'] || res.config?.url
-    await callDecoratorEvent(spider, SpiderEventEnum.SpiderResponse, reqUrl, async (cb) => cb(res.request, res))
+    await callDecoratorEvent(spider, SpiderEventEnum.SpiderResponse, reqUrl, (cb) => cb(res, res.config || res.request))
     return res
   }
-
+  
   async function catchErr(err: AxiosSessionError) {
     const reqUrl = err.request?.['res']?.['responseUrl'] || err.config?.url
-    await callDecoratorEvent(spider, SpiderEventEnum.SpiderError, reqUrl, async (cb) => cb(err))
-    return err
+    await callDecoratorEvent(spider, SpiderEventEnum.SpiderError, reqUrl, (cb) => cb(err, err.config || err.request))
+    /* 这里进行 resolve， 回调已经在爬虫事件 SpiderError 做完，后面 resolve 直接抛弃该次请求  */
+    return Promise.resolve(err)
   }
 
   // @ts-ignore
-  session.interceptors.request.use((req: AxiosSessionRequestConfig) => request(req), catchErr)
+  session.interceptors.request.use(request, catchErr)
   // @ts-ignore
-  session.interceptors.response.use((res: AxiosSessionResponse) => response(res), catchErr)
+  session.interceptors.response.use(response, catchErr)
 }

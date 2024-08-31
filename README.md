@@ -42,15 +42,28 @@ export class TestSpider extends SessionESpider {
     //   })
     // }
   }
-
-  @SpiderRequest('baidu.com')
+  @SpiderRequest() // 不传入 scope 则表示匹配所有请求
   request(request: AxiosSessionRequestConfig) {
-    console.log('request', request)
+    console.log('request', request.url)
+    // console.log('request', request)
   }
-  // 支持正则
-  @SpiderResponse(/baidu.com/)
-  responseFunc(res: AxiosSessionResponse) {
-    console.log('response', res.data)
+  
+  @SpiderResponse('www.baidu.com')
+  responseFunc(
+    res: AxiosSessionResponse, 
+    req: AxiosSessionRequestConfig
+  ) {
+    console.log('response', req.url)
+    // console.log('response', res.data)
+  }
+
+  @SpiderError(/baidu.com/)  // 支持正则
+  onError(
+    err: AxiosSessionError, 
+    req: AxiosSessionRequestConfig
+  ) {
+    console.log(err.message)
+    this.addRequestTask(req) // 请求重试
   }
 }
 

@@ -23,7 +23,7 @@ export async function createRequestDBCache(sequelizeConnect: Sequelize, name: st
     // request 是请求任务的信息， 通常包含url和一些参数，
     // 请注意: 例如请求头需要包含最新时间戳，此时不建议包含请求头和请求体或者时间戳有关的信息, 您如果要包含请求头或者请求体，应该在任务取出时进行构造，这样可以确保该请求时间有效性  
     request: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSON,
       allowNull: false
     },
     createTime: {  // axios 请求字符串
