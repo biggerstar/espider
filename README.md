@@ -42,6 +42,11 @@ export class TestSpider extends SessionESpider {
     //   })
     // }
   }
+  @SpiderRequestBefore()
+  onTask(req: AddRequestTaskOptions){
+    
+  }
+  
   @SpiderRequest() // 不传入 scope 则表示匹配所有请求
   request(request: AxiosSessionRequestConfig) {
     console.log('request', request.url)
@@ -51,7 +56,7 @@ export class TestSpider extends SessionESpider {
   @SpiderResponse('www.baidu.com')
   responseFunc(
     res: AxiosSessionResponse, 
-    req: AxiosSessionRequestConfig
+    req: AddRequestTaskOptions
   ) {
     console.log('response', req.url)
     // console.log('response', res.data)
@@ -60,7 +65,7 @@ export class TestSpider extends SessionESpider {
   @SpiderError(/baidu.com/)  // 支持正则
   onError(
     err: AxiosSessionError, 
-    req: AxiosSessionRequestConfig
+    req: AddRequestTaskOptions
   ) {
     console.log(err.message)
     this.addRequestTask(req) // 请求重试

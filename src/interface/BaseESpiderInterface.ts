@@ -31,6 +31,10 @@ export class BaseESpiderInterface<
   private _keepProcessTimer: number
   protected _initialized: boolean;
   private _onIdleBlock: boolean
+  /**
+   * 当前正在运行的请求数量
+   * */
+  protected _currentPendingCounter: number
 
   protected constructor() {
     const _this = this
@@ -39,6 +43,7 @@ export class BaseESpiderInterface<
     })
     this._initialized = false
     this._onIdleBlock = false
+    this._currentPendingCounter = 0
     this._runStatus = 'ready'
     this.dbQueue = new PQueue({concurrency: 1})
     this._taskQueue = new PQueue({concurrency: 1})
@@ -193,7 +198,7 @@ export class BaseESpiderInterface<
   /**
    * 添加到数据库操作队列
    * */
-  public addToDatabaseQueue(callback: Function): void {
+  protected addToDatabaseQueue(callback: Function): void {
     if (typeof callback !== 'function') {
       throw new Error(`[addToDatabaseQueue] 入参应该是一个函数`)
     }
@@ -207,7 +212,13 @@ export class BaseESpiderInterface<
    * */
   protected async autoLoadRequest(len: number) {
     // console.log('当前所需请求数量', len)
-    const taskList = await this.taskManager.getTask(len)
+    this._currentPendingCounter += len
+    const taskList = await this.taskManager.getTask(len);
+    const offsetLen = len - taskList.length
+    if (offsetLen > 0) {
+      // 如果获取的任务少于要求的个数， 减去原来多锁定的任务标记差数
+      this._currentPendingCounter -= offsetLen
+    }
     if (len > taskList.length && !this._onIdleBlock) {  // 表示剩余任务少于要求任务数
       this._onIdleBlock = true
       this._taskQueue.add(async () => {
@@ -216,32 +227,29 @@ export class BaseESpiderInterface<
           this._onIdleBlock = false  // 如果 taskList 一直为空 则会每3秒左右提醒一次 onIdle
         }, 3000)
       }).then()
-      return
     }
     taskList.forEach((task) => {
-      this.requestQueue.add(async () => {
-        await callDecoratorEvent(
-          this,
-          SpiderEventEnum.SpiderRequestTask,
-          task.request.url,
-          (cb) => cb(task)
-        )
-
-        await this
-          .doRequest(task.request)
-          .then((_) => {
-            this.fingerprint.add(task.request)
-            this.taskManager.removePendingTask(task.taskId)
-          })
-          .catch(() => void 0)
-      })
+      this.requestQueue.addAll([
+        async () => {
+          await callDecoratorEvent(
+            this,
+            SpiderEventEnum.SpiderRequestBefore,
+            task.request.url,
+            (cb) => cb(task.request)
+          )
+          task.request.spiderRequest = JSON.parse(JSON.stringify(task.request))
+          await this.doRequest(task.request)
+          this._currentPendingCounter--
+          await this.taskManager.removePendingTask(task.taskId)
+        }
+      ])
     })
   }
 
   /**
    * 进行请求， 不需要考虑错误处理， 因为在 interceptorsSpider 函数中已经处理了错误
    * */
-  public doRequest(_: any): Promise<any> {
+  protected doRequest(_: any): Promise<any> {
     throw new Error('请在子类中实现 doRequest 函数')
   }
 }

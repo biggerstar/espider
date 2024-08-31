@@ -1,6 +1,6 @@
 export enum SpiderEventEnum {
   /*  可匹配 URL scope 事件  */
-  SpiderRequestTask = "SpiderRequestTask",
+  SpiderRequestBefore = "SpiderRequestBefore",
   SpiderRequest = "SpiderRequest",
   SpiderResponse = "SpiderResponse",
   SpiderError = "SpiderError",

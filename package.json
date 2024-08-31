@@ -1,7 +1,7 @@
 {
   "name": "espider",
   "type": "module",
-  "version": "0.3.8",
+  "version": "0.3.23",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,11 +9,11 @@
   "scripts": {
     "dev": "vite-run dev -y",
     "build": "vite-run build -y",
-    "test": "bun test/Test.ts",
+    "test": "tsx test/Test.ts",
     "publish:npm": "npm run build && npm publish"
   },
   "dependencies": {
-    "@biggerstar/axios-session": "^0.3.23",
+    "@biggerstar/axios-session": "^0.3.26",
     "@biggerstar/tools": "^0.0.15",
     "bloom-filters": "^3.0.2",
     "cheerio": "1.0.0-rc.12",

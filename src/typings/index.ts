@@ -94,26 +94,25 @@ export type TaskData = {
   createTime: number,
 }
 
-export type AddRequestTaskAllowField = 'meta' | 'method' | 'url' | 'data' | 'headers'
-export type AddRequestTaskOptions = Pick<AxiosSessionRequestConfig, AddRequestTaskAllowField>
+export type AddRequestTaskOptions = Partial<AxiosSessionRequestConfig> &
+  AddRequestTaskOtherOptions &
+  {
+    /** 是否跳过去重过滤器检查, 在错误事件中自动附加的 */
+    __skipCheck__?: boolean,
+    proxyString?: never
+  }
 
 export type SessionItem = { pending: boolean, session: AxiosSessionInstance, createTime: number }
-export type SpiderTask<Task extends Record<any, any> = Record<any, any>> = {
-  status: RequestStatusEnum,
-  data: Task,
-  meta: Record<any, any>
-  timestamp: number
-}
 
 export type AddRequestTaskOtherOptions = {
   /**
    * 任务优先级
    * */
-  priority: number,
+  priority?: number,
   /**
    * 不检查指纹( 是否重复 )直接添加任务
    * */
-  skipCheck: boolean
+  skipCheck?: boolean
 }
 
 export type DupeFilterOptions = {

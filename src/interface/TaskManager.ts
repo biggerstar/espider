@@ -49,7 +49,12 @@ export class TaskManager {
       await this.pendingModel.destroy({truncate: true})
       await this.requestModel.destroy({truncate: true})
     }
-    const historyTaskList = await this.pendingModel.findAll({order: [['priority', 'DESC']]})
+    const historyTaskList = await this.pendingModel.findAll({
+      order: [
+        ['priority', 'DESC'],
+        ['createTime', 'ASC']
+      ]
+    })
     this.historicalTasks = historyTaskList.map(dbRes => dbRes.dataValues)
   }
 
@@ -117,8 +122,11 @@ export class TaskManager {
    * 任务取出来后立马会被放置到 pendingModel 引用的数据库中
    * */
   public async getTask(len: number): Promise<TaskData[]> {
-    this.increaseCounter(len)
+    if (!isFinite(len)) {
+      throw new Error('len must be a finite number')
+    }
     let taskList: TaskData[]
+    this.increaseCounter(len)
     /* 先看看是否有上次任务停止时未完成的任务 */
     if (this.historicalTasks.length >= len) {
       taskList = this.historicalTasks.splice(0, len)
@@ -128,7 +136,7 @@ export class TaskManager {
     }
     const requireLen = len - taskList.length
     // console.log('requireLen', requireLen)
-    if (!isFinite(requireLen) || requireLen <= 0) {
+    if (requireLen <= 0) {
       this.decreaseCounter(len, true)
       return taskList
     }
@@ -138,7 +146,10 @@ export class TaskManager {
         const foundTaskList = await this.requestModel
           .findAll({
             limit: requireLen,
-            order: [['priority', 'DESC']]   // 按优先级排序获取
+            order: [
+              ['priority', 'DESC'],
+              ['createTime', 'ASC']
+            ]   // 按优先级排序获取, 然后按时间早的排序
           })
         const taskInfoList = foundTaskList.map(dbRes => dbRes.dataValues)
         // console.log(taskInfoList)

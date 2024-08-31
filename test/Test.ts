@@ -15,24 +15,14 @@ export class TestSpider extends SessionESpider {
   @SpiderReady()
   onReady() {
     console.log('onReady执行')
-    // this.addRequestTask({
-    //   url: 'https://www.baidu.com?' + Date.now(),
-    // }, {
-    //   skipCheck: true
-    // })
-    // for (let i = 0; i < 30; i++) {
-    //   this.addRequestTask({
-    //     url: 'https://www.baidu.com?' + Date.now(),
-    //   })
-    // }
     for (let i = 0; i <= 10; i++) {
-      // const url = `https://www.onergys.de/index.php?lang=1&cl=search&&pgNr=${i}`
-      const url = `http://baidu2.com/ss?a=${i}`
+      const url = `https://www.onergys.de/index.php?lang=1&cl=search&&pgNr=${i}`
+      // const url = `http://baidu2.com/ss?a=${i}`
+      // const url = `http://baidu.com?s=${i}`
+      // const url = `http://httpbin.org/ip`
       this.addRequestTask({
         url: url,
-        maxRedirects: 0
-      }, {
-        // skipCheck: true
+        maxRedirects: 0,
       })
     }
     console.log('添加任务结束')
@@ -40,24 +30,30 @@ export class TestSpider extends SessionESpider {
 
   @SpiderCreateSession()
   patchProxy(session: AxiosSessionInstance) {
+    session.setAxiosDefaults({
+      // proxyString: 'socket5://115.206.60.66:17928'
+    })
   }
 
   @SpiderRequest()
-  request(request: AxiosSessionRequestConfig) {
-    console.log('request', request.url)
+  request(req: AxiosSessionRequestConfig) {
+    console.log('request', req.url)
+    // console.log(req)
+
+    req.timeout = 30000
+    // console.log(req)
     // console.log('request', request)
   }
 
   @SpiderResponse()
   responseFunc(res: AxiosSessionResponse, req: AxiosSessionRequestConfig) {
+    // console.log('response', req)
     console.log('response', req.url)
-    // console.log('response', res.data)
   }
 
   @SpiderError()
   onError(err: AxiosSessionError, req: AxiosSessionRequestConfig) {
-    // console.log(err.message)
-    console.log(req)
+    console.log('SpiderError', err.message, req.url);
   }
 }
 

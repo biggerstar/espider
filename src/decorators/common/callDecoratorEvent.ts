@@ -19,7 +19,11 @@ export async function callDecoratorEvent(
     /* 如果指定需要匹配 url scope, 但是匹配不到则不执行  */
     if (item.isMatchUrl && item.args[0] && !(new RegExp(item.args[0])).test(matchUrl)) continue
     /* 如果定义回调函数的话， 将会把事件对应装饰的函数执行权限交给外部去执行  */
-    if (callback) await callback(item.value.bind(spiderInstance))
-    else await item.value.call(spiderInstance)
+    try {
+      if (callback) await callback(item.value.bind(spiderInstance))
+      else await item.value.call(spiderInstance)
+    }catch (e) {
+      console.error(e)
+    }
   }
 }

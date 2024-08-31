@@ -4,7 +4,7 @@ export const SPIDER_ERROR_TYPE = {
   GET_PROXY_ERROR: '获取代理失败'
 }
 
-export const CACHE_DIR_PATH = `./.cache`
+export const CACHE_DIR_PATH = `./.espider`
 
 export const BaseESpiderDefaultOptions: BaseESpiderInterfaceOptions = {
   name: '',
