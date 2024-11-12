@@ -6,6 +6,12 @@
 ###  Feature
 redis 分布式
 
+### 安装
+```bash
+pnpm i espider 
+pnpm i tslib 
+```
+
 ### 前提条件
 
 ```json5
