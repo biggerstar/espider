@@ -67,7 +67,7 @@ export type TaskManagerOptions = {
    *  ```js
    *     const sequelize = new Sequelize({
    *                           dialect: 'sqlite',
-   *                           storage: `./cache.sqlite3`,
+   *                           storage: `./cache.db`,
    *                           logging: false
    *                       })
    *    参数这里接收的就是 sequelize 通过 Sequelize类构造的连接实例

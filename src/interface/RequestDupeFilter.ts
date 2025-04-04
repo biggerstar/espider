@@ -96,27 +96,38 @@ export class RequestDupeFilter {
   private _filterRule(req: Partial<AxiosSessionRequestConfig>) {
     let finallyReq: Partial<AxiosSessionRequestConfig> = typeof req === 'string' ? {url: req} : req
     const urls = new URL(finallyReq.url)
+
+    if (typeof finallyReq.params === 'object') {
+      for (const key in finallyReq.params) {
+        urls.searchParams.set(key, finallyReq.params[key])
+      }
+    }
     urls.searchParams.sort()
+
     const urlPath = `${urls.origin}${urls.pathname}`
     let headerString = ''
     let dataString = ''
     let query = urls.searchParams.toString()
     let method = req.method ? req.method.toLowerCase() : 'get'
+
     if (typeof finallyReq.headers === 'object') {
       headerString = Object.keys(finallyReq.headers)
         .sort()
         .map(name => `${name.toLowerCase()}=${finallyReq.headers[name]}`)
         .toString()
     }
-    // 未来考虑支持  FormData  URLSearchParams buffer 指纹, 当前可设置请求头进行指定 Content-type
-    // if (finallyReq.data instanceof FormData) {  
-    // } 
+
     if (typeof finallyReq.data === 'object') {
       dataString = Object.keys(finallyReq.data)
         .sort()
         .map(name => `${name}=${finallyReq.data[name]}`)
         .toString()
+    } else if (typeof finallyReq.data === 'string') {
+      dataString = finallyReq.data
+    } else if (finallyReq.data) {
+      dataString = md5(finallyReq.data as unknown as any)
     }
+
     const seed = `${method}+${urlPath}?${query}+${headerString}+${dataString}`
     return md5(seed)
   }

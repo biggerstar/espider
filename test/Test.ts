@@ -16,13 +16,18 @@ export class TestSpider extends SessionESpider {
   onReady() {
     console.log('onReady执行')
     for (let i = 0; i <= 10; i++) {
-      const url = `https://www.onergys.de/index.php?lang=1&cl=search&&pgNr=${i}`
+      // const url = `https://www.onergys.de/index.php?lang=1&cl=search&&pgNr=${i}`
       // const url = `http://baidu2.com/ss?a=${i}`
-      // const url = `http://baidu.com?s=${i}`
+      const url = `http://baidu.com?s=${i}`
       // const url = `http://httpbin.org/ip`
       this.addRequestTask({
         url: url,
         maxRedirects: 0,
+        data: Buffer.from('a=1&b=212'),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        }
       })
     }
     console.log('添加任务结束')

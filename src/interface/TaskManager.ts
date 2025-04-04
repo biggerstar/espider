@@ -35,7 +35,7 @@ export class TaskManager {
     if (!this.sequelize) {  // 如果没有手动定义 sequelize 连接，则使用内部默认
       this.sequelize = new Sequelize({
         dialect: 'sqlite',
-        storage: path.resolve(this.cacheDirPath, `${this.name}.request.sqlite3`),
+        storage: path.resolve(this.cacheDirPath, `${this.name}.request.db`),
         logging: false
       })
     }
